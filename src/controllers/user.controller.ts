@@ -1,22 +1,12 @@
 import { Request, Response } from "express";
 import User from "../models/user.model";
+import { sanitizeUser } from "../utils/sanitize";
 
 /**
- * @description Sanitizes a user document by removing sensitive fields like password.
- * @param userDoc The user document to sanitize.
- * @returns The sanitized user object.
+ * @function createUser
+ * @description Creates a new user in the database.
  */
-const sanitizeUser = (userDoc: unknown): Record<string, unknown> => {
-    const user = userDoc as { toObject: () => Record<string, unknown> };
-    const plainUser = user.toObject();
-    delete plainUser.password;
-    return plainUser;
-};
-
-export const createUser = async (
-    req: Request,
-    res: Response,
-): Promise<void> => {
+export const createUser = async (req: Request, res: Response,): Promise<void> => {
     try {
         const user = await User.create(req.body);
         res.status(201).json({ user: sanitizeUser(user) });
@@ -25,6 +15,10 @@ export const createUser = async (
     }
 };
 
+/**
+ * @function getUsers
+ * @description Retrieves all users from the database, excluding their passwords.
+ */
 export const getUsers = async (_req: Request, res: Response): Promise<void> => {
     try {
         const users = await User.find().select("-password");
@@ -34,6 +28,10 @@ export const getUsers = async (_req: Request, res: Response): Promise<void> => {
     }
 };
 
+/**
+ * @function getUserById
+ * @description Retrieves a user by their ID, excluding their password.
+ */
 export const getUserById = async (
     req: Request,
     res: Response,
@@ -52,6 +50,10 @@ export const getUserById = async (
     }
 };
 
+/**
+ * @function updateUser
+ * @description Updates a user's information by their ID, excluding their password.
+ */
 export const updateUser = async (
     req: Request,
     res: Response,
@@ -73,6 +75,10 @@ export const updateUser = async (
     }
 };
 
+/**
+ * @function deleteUser
+ * @description Deletes a user by their ID.
+ */
 export const deleteUser = async (
     req: Request,
     res: Response,

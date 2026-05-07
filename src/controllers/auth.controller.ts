@@ -1,24 +1,24 @@
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import User from "../models/user.model";
+import { sanitizeUser } from "../utils/sanitize";
+import { generateToken } from "../utils/jwt";
 
-const sanitizeUser = (userDoc: unknown): Record<string, unknown> => {
-    const user = userDoc as { toObject: () => Record<string, unknown> };
-    const plainUser = user.toObject();
-    delete plainUser.password;
-    return plainUser;
-};
-
+/**
+ * @function login
+ * @description Authenticates a user using either their username or email 
+ * along with their password. It checks if the user exists, verifies the password, 
+ * and ensures the user is active before returning a successful login response.
+ */
 export const login = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { identifier, username, email, password } = req.body as {
+        const { identifier, password } = req.body as {
             identifier?: string;
-            username?: string;
-            email?: string;
             password?: string;
         };
 
-        const loginIdentifier = identifier ?? username ?? email;
+        const loginIdentifier = identifier;
+
 
         if (!loginIdentifier || !password) {
             res.status(400).json({
@@ -27,6 +27,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
+        //It can be either email or username, dynamic query
         const normalizedIdentifier = loginIdentifier.trim();
         const query = normalizedIdentifier.includes("@")
             ? { email: normalizedIdentifier.toLowerCase() }
@@ -51,8 +52,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
+        const token = generateToken({
+            id: user._id.toString(),
+            username: user.username,
+            role: user.role,
+        });
+
         res.status(200).json({
             message: "Login exitoso",
+            token,
             user: sanitizeUser(user),
         });
     } catch (error) {

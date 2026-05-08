@@ -1,41 +1,37 @@
 import { Request, Response } from "express";
+import bcrypt from "bcrypt";
 import User from "../models/user.model";
 import { sanitizeUser } from "../utils/sanitize";
+import { TokenPayload } from "../utils/jwt";
 
-/**
- * @function createUser
- * @description Creates a new user in the database.
- */
-export const createUser = async (req: Request, res: Response,): Promise<void> => {
+const SALT_ROUNDS = Number.parseInt(process.env.BCRYPT_SALT_ROUNDS ?? "10", 10);
+
+export const createUser = async (req: Request, res: Response): Promise<void> => {
     try {
-        const user = await User.create(req.body);
+        const { username, email, password, firstName, lastName } = req.body as {
+            username?: string;
+            email?: string;
+            password?: string;
+            firstName?: string;
+            lastName?: string;
+        };
+        const user = await User.create({ username, email, password, firstName, lastName });
         res.status(201).json({ user: sanitizeUser(user) });
-    } catch (error) {
-        res.status(400).json({ message: "Error creating user", error });
+    } catch (_error) {
+        res.status(400).json({ message: "Error creating user" });
     }
 };
 
-/**
- * @function getUsers
- * @description Retrieves all users from the database, excluding their passwords.
- */
 export const getUsers = async (_req: Request, res: Response): Promise<void> => {
     try {
         const users = await User.find().select("-password");
         res.status(200).json({ users });
-    } catch (error) {
-        res.status(500).json({ message: "Error fetching users", error });
+    } catch (_error) {
+        res.status(500).json({ message: "Error fetching users" });
     }
 };
 
-/**
- * @function getUserById
- * @description Retrieves a user by their ID, excluding their password.
- */
-export const getUserById = async (
-    req: Request,
-    res: Response,
-): Promise<void> => {
+export const getUserById = async (req: Request, res: Response): Promise<void> => {
     try {
         const user = await User.findById(req.params.id).select("-password");
 
@@ -45,21 +41,39 @@ export const getUserById = async (
         }
 
         res.status(200).json({ user });
-    } catch (error) {
-        res.status(400).json({ message: "Invalid user id", error });
+    } catch (_error) {
+        res.status(400).json({ message: "Invalid user id" });
     }
 };
 
-/**
- * @function updateUser
- * @description Updates a user's information by their ID, excluding their password.
- */
-export const updateUser = async (
-    req: Request,
-    res: Response,
-): Promise<void> => {
+export const updateUser = async (req: Request, res: Response): Promise<void> => {
     try {
-        const user = await User.findByIdAndUpdate(req.params.id, req.body, {
+        const authUser = res.locals.authUser as TokenPayload;
+        const isAdmin = authUser.role === "admin";
+        const isSelf = authUser.id === req.params.id;
+
+        if (!isAdmin && !isSelf) {
+            res.status(403).json({ message: "No autorizado para modificar este usuario" });
+            return;
+        }
+
+        const { firstName, lastName, email, password } = req.body as {
+            firstName?: string;
+            lastName?: string;
+            email?: string;
+            password?: string;
+        };
+
+        const updateData: Record<string, unknown> = {};
+        if (firstName !== undefined) updateData.firstName = firstName;
+        if (lastName !== undefined) updateData.lastName = lastName;
+        if (email !== undefined) updateData.email = email;
+
+        if (typeof password === "string" && password.length > 0) {
+            updateData.password = await bcrypt.hash(password, SALT_ROUNDS);
+        }
+
+        const user = await User.findByIdAndUpdate(req.params.id, updateData, {
             new: true,
             runValidators: true,
         }).select("-password");
@@ -70,19 +84,12 @@ export const updateUser = async (
         }
 
         res.status(200).json({ user });
-    } catch (error) {
-        res.status(400).json({ message: "Error updating user", error });
+    } catch (_error) {
+        res.status(400).json({ message: "Error updating user" });
     }
 };
 
-/**
- * @function deleteUser
- * @description Deletes a user by their ID.
- */
-export const deleteUser = async (
-    req: Request,
-    res: Response,
-): Promise<void> => {
+export const deleteUser = async (req: Request, res: Response): Promise<void> => {
     try {
         const user = await User.findByIdAndDelete(req.params.id);
 
@@ -92,7 +99,7 @@ export const deleteUser = async (
         }
 
         res.status(200).json({ message: "User deleted successfully" });
-    } catch (error) {
-        res.status(400).json({ message: "Invalid user id", error });
+    } catch (_error) {
+        res.status(400).json({ message: "Invalid user id" });
     }
 };

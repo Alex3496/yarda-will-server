@@ -63,7 +63,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             token,
             user: sanitizeUser(user),
         });
-    } catch (error) {
-        res.status(500).json({ message: "Error en login", error });
+    } catch (_error) {
+        res.status(500).json({ message: "Error en login" });
     }
 };

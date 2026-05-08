@@ -2,10 +2,13 @@ import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import User from "../models/user.model";
 import { sanitizeUser } from "../utils/sanitize";
-import { TokenPayload } from "../utils/jwt";
 
 const SALT_ROUNDS = Number.parseInt(process.env.BCRYPT_SALT_ROUNDS ?? "10", 10);
 
+/**
+ * @function createUser
+ * @description Creates a new user in the database with the allowed fields.
+ */
 export const createUser = async (req: Request, res: Response): Promise<void> => {
     try {
         const { username, email, password, firstName, lastName } = req.body as {
@@ -22,6 +25,10 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     }
 };
 
+/**
+ * @function getUsers
+ * @description Retrieves all users from the database, excluding their passwords.
+ */
 export const getUsers = async (_req: Request, res: Response): Promise<void> => {
     try {
         const users = await User.find().select("-password");
@@ -31,6 +38,10 @@ export const getUsers = async (_req: Request, res: Response): Promise<void> => {
     }
 };
 
+/**
+ * @function getUserById
+ * @description Retrieves a user by their ID, excluding their password.
+ */
 export const getUserById = async (req: Request, res: Response): Promise<void> => {
     try {
         const user = await User.findById(req.params.id).select("-password");
@@ -46,17 +57,12 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
     }
 };
 
+/**
+ * @function updateUser
+ * @description Updates a user's data by their ID. Only admins can perform this action.
+ */
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
     try {
-        const authUser = res.locals.authUser as TokenPayload;
-        const isAdmin = authUser.role === "admin";
-        const isSelf = authUser.id === req.params.id;
-
-        if (!isAdmin && !isSelf) {
-            res.status(403).json({ message: "No autorizado para modificar este usuario" });
-            return;
-        }
-
         const { firstName, lastName, email, password } = req.body as {
             firstName?: string;
             lastName?: string;
@@ -89,6 +95,10 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
     }
 };
 
+/**
+ * @function deleteUser
+ * @description Deletes a user by their ID. Only admins can perform this action.
+ */
 export const deleteUser = async (req: Request, res: Response): Promise<void> => {
     try {
         const user = await User.findByIdAndDelete(req.params.id);

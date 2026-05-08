@@ -13,7 +13,7 @@ const userRouter = Router();
 userRouter.post('/',      [authenticate, requireAdmin], createUser);
 userRouter.get('/',       [authenticate], getUsers);
 userRouter.get('/:id',    [authenticate], getUserById);
-userRouter.patch('/:id',  [authenticate], updateUser);
+userRouter.patch('/:id',  [authenticate, requireAdmin], updateUser);
 userRouter.delete('/:id', [authenticate, requireAdmin], deleteUser);
 
 export default userRouter;

@@ -10,7 +10,7 @@ import { authenticate, requireAdmin } from '../middlewares/auth.middleware';
 
 const userRouter = Router();
 
-userRouter.post('/',      [requireAdmin], createUser);
+userRouter.post('/',      [authenticate, requireAdmin], createUser);
 userRouter.get('/',       [authenticate], getUsers);
 userRouter.get('/:id',    [authenticate], getUserById);
 userRouter.patch('/:id',  [authenticate], updateUser);

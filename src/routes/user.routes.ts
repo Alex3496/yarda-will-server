@@ -6,13 +6,14 @@ import {
   getUsers,
   updateUser,
 } from '../controllers/user.controller';
+import { authenticate, requireAdmin } from '../middlewares/auth.middleware';
 
 const userRouter = Router();
 
-userRouter.post('/', createUser);
-userRouter.get('/', getUsers);
-userRouter.get('/:id', getUserById);
-userRouter.patch('/:id', updateUser);
-userRouter.delete('/:id', deleteUser);
+userRouter.post('/',      [requireAdmin], createUser);
+userRouter.get('/',       [authenticate], getUsers);
+userRouter.get('/:id',    [authenticate], getUserById);
+userRouter.patch('/:id',  [authenticate], updateUser);
+userRouter.delete('/:id', [authenticate, requireAdmin], deleteUser);
 
 export default userRouter;

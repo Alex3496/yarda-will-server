@@ -2,26 +2,13 @@ import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { TokenPayload } from "../utils/jwt";
 
-const getTokenFromHeader = (authorizationHeader?: string): string | null => {
-    if (!authorizationHeader) {
-        return null;
-    }
-
-    const [scheme, token] = authorizationHeader.split(" ");
-    if (scheme !== "Bearer" || !token) {
-        return null;
-    }
-
-    return token;
-};
-
 export const authenticate = (
     req: Request,
     res: Response,
     next: NextFunction,
 ): void => {
     try {
-        const token = getTokenFromHeader(req.headers.authorization);
+        const token: string | undefined = req.cookies?.token;
 
         if (!token) {
             res.status(401).json({ message: "Token no proporcionado o invalido" });

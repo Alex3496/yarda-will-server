@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import User from "../models/user.model";
 import { sanitizeUser } from "../utils/sanitize";
-import { generateToken } from "../utils/jwt";
+import { generateToken, TokenPayload } from "../utils/jwt";
 
 /**
  * @function login
@@ -12,9 +12,10 @@ import { generateToken } from "../utils/jwt";
  */
 export const login = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { identifier, password } = req.body as {
+        const { identifier, password, remember } = req.body as {
             identifier?: string;
             password?: string;
+            remember?: boolean;
         };
 
         const loginIdentifier = identifier;
@@ -58,12 +59,34 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             role: user.role,
         });
 
+        const isProduction = process.env.NODE_ENV === "production";
+        const cookieOptions = {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: "strict" as const,
+            ...(remember ? { maxAge: 7 * 24 * 60 * 60 * 1000 } : {}),
+        };
+
+        res.cookie("token", token, cookieOptions);
         res.status(200).json({
             message: "Login exitoso",
-            token,
             user: sanitizeUser(user),
         });
     } catch (_error) {
         res.status(500).json({ message: "Error en login" });
     }
+};
+
+export const logout = (_req: Request, res: Response): void => {
+    res.clearCookie("token", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+    });
+    res.status(200).json({ message: "Logout exitoso" });
+};
+
+export const me = (_req: Request, res: Response): void => {
+    const user = res.locals.authUser as TokenPayload;
+    res.status(200).json({ user });
 };

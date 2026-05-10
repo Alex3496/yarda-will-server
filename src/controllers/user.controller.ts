@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import User from "../models/user.model";
 import { sanitizeUser } from "../utils/sanitize";
+import { TokenPayload } from "../utils/jwt";
 
 const SALT_ROUNDS = Number.parseInt(process.env.BCRYPT_SALT_ROUNDS ?? "10", 10);
 
@@ -63,17 +64,19 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
  */
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { firstName, lastName, email, password } = req.body as {
+        const { firstName, lastName, email, password, isActive } = req.body as {
             firstName?: string;
             lastName?: string;
             email?: string;
             password?: string;
+            isActive?: boolean;
         };
 
         const updateData: Record<string, unknown> = {};
         if (firstName !== undefined) updateData.firstName = firstName;
         if (lastName !== undefined) updateData.lastName = lastName;
         if (email !== undefined) updateData.email = email;
+        if (isActive !== undefined) updateData.isActive = isActive;
 
         if (typeof password === "string" && password.length > 0) {
             updateData.password = await bcrypt.hash(password, SALT_ROUNDS);
@@ -91,6 +94,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 
         res.status(200).json({ user });
     } catch (_error) {
+        console.error(_error);
         res.status(400).json({ message: "Error updating user" });
     }
 };
@@ -101,6 +105,12 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
  */
 export const deleteUser = async (req: Request, res: Response): Promise<void> => {
     try {
+        const authUser = res.locals.authUser as TokenPayload;
+        if (req.params.id === authUser.id) {
+            res.status(403).json({ message: "No puedes eliminar tu propia cuenta" });
+            return;
+        }
+
         const user = await User.findByIdAndDelete(req.params.id);
 
         if (!user) {

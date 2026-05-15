@@ -67,7 +67,7 @@ USER appuser
 
 # EXPOSE: documenta en qué puerto escucha el contenedor.
 # No abre el puerto por sí solo; eso lo hace "docker run -p" o docker-compose.
-EXPOSE 3000
+EXPOSE 4000
 
 # CMD: el comando que se ejecuta cuando el contenedor arranca.
 # Usamos la forma JSON (array) que es la recomendada porque no invoca

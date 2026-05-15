@@ -6,6 +6,8 @@ import driversRouter from './drivers.routes';
 import regionsRouter from './regions.routes';
 import brandsRouter from './brands.routes';
 import vehicleModelsRouter from './vehicleModels.routes';
+import contactsRouter from './contacts.routes';
+import auctionsRouter from './auctions.routes';
 
 const router = Router();
 
@@ -21,5 +23,7 @@ router.use('/drivers', driversRouter);
 router.use('/regions', regionsRouter);
 router.use('/brands', brandsRouter);
 router.use('/vehicle-models', vehicleModelsRouter);
+router.use('/contacts', contactsRouter);
+router.use('/auctions', auctionsRouter);
 
 export default router;

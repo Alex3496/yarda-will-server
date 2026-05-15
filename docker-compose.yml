@@ -1,0 +1,80 @@
+# docker-compose.yml define y orquesta múltiples contenedores que trabajan juntos.
+# En lugar de levantar cada contenedor con "docker run ..." por separado,
+# con un solo "docker compose up" arrancas todo el stack.
+
+# "version" solía ser obligatoria, pero en versiones modernas de Docker Compose
+# ya no se requiere. La dejamos fuera para usar siempre la última sintaxis.
+
+# =============================================================================
+# NETWORKS — redes virtuales que conectan contenedores entre sí
+# =============================================================================
+networks:
+  # Declaramos la red "shared_db". Al ser "external: true" le decimos a
+  # Docker Compose que esta red NO debe crearla él — ya existe (o existirá)
+  # creada manualmente o por otro docker-compose.
+  # Esto permite que otros proyectos (p.ej. el frontend) se conecten
+  # a la misma red y alcancen la base de datos.
+  shared_db:
+    external: true
+
+# =============================================================================
+# SERVICES — cada servicio es un contenedor
+# =============================================================================
+services:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Servicio 1: backend Node.js / Express
+  # ─────────────────────────────────────────────────────────────────────────
+  yarda-will-backend:
+    # build: en lugar de usar una imagen pre-construida, construye la imagen
+    # usando el Dockerfile que está en el directorio actual (".").
+    build:
+      context: .         # directorio raíz del build (donde está el Dockerfile)
+      dockerfile: Dockerfile
+
+    image: yarda-will-backend:latest  # etiqueta de la imagen resultante (opcional)
+
+    container_name: yarda-will-backend
+
+    restart: unless-stopped
+
+    # ports: mapea puertos "host:contenedor".
+    # "3000:3000" significa: el puerto 3000 de TU máquina redirige al
+    # puerto 3000 del contenedor. Así puedes abrir localhost:3000 en tu browser.
+    ports:
+      - "127.0.0.1:4010:4000"
+
+    # environment: variables de entorno disponibles dentro del contenedor.
+    # Tienen prioridad sobre lo que diga el .env de la aplicación.
+    # Nota clave: MONGO_URI usa "mongo" (el container_name de arriba)
+    # como hostname — Docker resuelve ese nombre automáticamente dentro
+    # de la red shared_db.
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      MONGO_URI: mongodb://mongodb_shared:27017/yarda-will
+
+    # env_file: carga variables adicionales desde un archivo .env.
+    # Las variables definidas en "environment:" arriba tienen prioridad
+    # sobre las de este archivo si hay conflicto.
+    # Aquí es donde irán JWT_SECRET, CORS_ORIGIN, etc.
+    env_file:
+      - .env
+
+    # depends_on: garantiza que el servicio "mongo" arranque ANTES que
+    # "backend". No garantiza que Mongo esté listo para aceptar conexiones,
+    # solo que el contenedor haya iniciado. Para esperar a que Mongo esté
+    # "healthy" habría que agregar un healthcheck (avanzado).
+    depends_on:
+      - mongodb_shared
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'  # Limita el uso de CPU al 50% de un núcleo
+          memory: 512M # Limita la memoria a 512 MB
+
+    networks:
+      - shared_db
+
+

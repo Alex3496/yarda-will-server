@@ -1,0 +1,16 @@
+# Dependencias locales — se reinstalan dentro del contenedor
+node_modules
+
+# Código compilado — se regenera en la etapa builder
+dist
+
+# Variables de entorno con secretos reales — nunca deben entrar a la imagen
+.env
+
+# Archivos de git
+.git
+.gitignore
+
+# Logs
+*.log
+npm-debug.log*

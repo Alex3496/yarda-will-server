@@ -3,7 +3,7 @@ import { Document, Model, Schema, Types, model } from "mongoose";
 export interface IVehicleModel extends Document {
     key: string;
     name: string;
-    brand: Types.ObjectId;
+    brand_id: Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -21,7 +21,7 @@ const vehicleModelSchema = new Schema<IVehicleModel>(
             trim: true,
             maxlength: 120,
         },
-        brand: {
+        brand_id: {
             type: Schema.Types.ObjectId,
             ref: "Brand",
             required: true,

@@ -32,8 +32,8 @@ export const getNextKey = async (_req: Request, res: Response): Promise<void> =>
 export const createVehicleModel = async (req: Request, res: Response): Promise<void> => {
     try {
         const { name, brandId } = req.body as { name?: string; brandId?: string };
-        const vehicleModel = await VehicleModel.create({ name, brand: brandId });
-        await vehicleModel.populate<{ brand: PopulatedBrand }>("brand", "key name");
+        const vehicleModel = await VehicleModel.create({ name, brand_id: brandId });
+        await vehicleModel.populate("brand_id", "key name");
         res.status(201).json({ vehicleModel });
     } catch (_error) {
         res.status(400).json({ message: "Error creating vehicle model" });
@@ -47,11 +47,18 @@ export const createVehicleModel = async (req: Request, res: Response): Promise<v
  */
 export const getVehicleModels = async (req: Request, res: Response): Promise<void> => {
     try {
+        
         const page  = parseInt(req.query.page  as string) || 1;
         const limit = parseInt(req.query.limit as string) || 20;
         const skip  = (page - 1) * limit;
 
         const filter: Record<string, unknown> = {};
+
+        const brandId = req.query.brand_id as string | undefined;
+        if (brandId?.trim()) {
+            filter.brand_id = brandId.trim();
+        }
+
         const search = req.query.search as string | undefined;
         if (search?.trim()) {
             const regex = new RegExp(search.trim(), "i");
@@ -60,7 +67,7 @@ export const getVehicleModels = async (req: Request, res: Response): Promise<voi
 
         const [vehicleModels, total] = await Promise.all([
             VehicleModel.find(filter)
-                .populate<{ brand: PopulatedBrand }>("brand", "key name")
+                .populate("brand_id", "key name")
                 .sort({ key: 1 })
                 .skip(skip)
                 .limit(limit),
@@ -80,7 +87,7 @@ export const getVehicleModels = async (req: Request, res: Response): Promise<voi
 export const getVehicleModelById = async (req: Request, res: Response): Promise<void> => {
     try {
         const vehicleModel = await VehicleModel.findById(req.params.id)
-            .populate<{ brand: PopulatedBrand }>("brand", "key name");
+            .populate("brand_id", "key name");
 
         if (!vehicleModel) {
             res.status(404).json({ message: "Vehicle model not found" });
@@ -101,14 +108,14 @@ export const updateVehicleModel = async (req: Request, res: Response): Promise<v
     try {
         const { name, brandId } = req.body as { name?: string; brandId?: string };
         const updateData: Record<string, unknown> = {};
-        if (name     !== undefined) updateData.name  = name;
-        if (brandId  !== undefined) updateData.brand = brandId;
+        if (name    !== undefined) updateData.name     = name;
+        if (brandId !== undefined) updateData.brand_id = brandId;
 
         const vehicleModel = await VehicleModel.findByIdAndUpdate(
             req.params.id,
             updateData,
             { new: true, runValidators: true },
-        ).populate<{ brand: PopulatedBrand }>("brand", "key name");
+        ).populate("brand_id", "key name");
 
         if (!vehicleModel) {
             res.status(404).json({ message: "Vehicle model not found" });

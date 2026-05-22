@@ -9,6 +9,7 @@ import vehicleModelsRouter from './vehicleModels.routes';
 import contactsRouter from './contacts.routes';
 import auctionsRouter from './auctions.routes';
 import operationsRouter from './operations.routes';
+import servicesRouter from './services.routes';
 
 const router = Router();
 
@@ -27,5 +28,6 @@ router.use('/vehicle-models', vehicleModelsRouter);
 router.use('/contacts', contactsRouter);
 router.use('/auctions', auctionsRouter);
 router.use('/operations', operationsRouter);
+router.use('/services', servicesRouter);
 
 export default router;

@@ -36,6 +36,7 @@ const operationSchema = new Schema<IOperation>(
             type: String,
             trim: true,
             maxlength: 120,
+            unique: true,
         },
         buyer: {
             type: String,

@@ -1,10 +1,12 @@
 import { Request, Response } from "express";
 import Auction from "../models/auction.model";
 
-/**
- * @function getNextKey
- * @description Returns the next available auction key without persisting a record.
- */
+interface PopulatedRegion {
+    _id: string;
+    key: string;
+    name: string;
+}
+
 export const getNextKey = async (_req: Request, res: Response): Promise<void> => {
     try {
         const last = await Auction.findOne({}, { key: 1 }).sort({ key: -1 });
@@ -24,8 +26,9 @@ export const getNextKey = async (_req: Request, res: Response): Promise<void> =>
  */
 export const createAuction = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { name } = req.body as { name?: string };
-        const auction = await Auction.create({ name });
+        const { name, regionId } = req.body as { name?: string; regionId?: string };
+        const auction = await Auction.create({ name, region_id: regionId || undefined });
+        await auction.populate("region_id", "key name");
         res.status(201).json({ auction });
     } catch (_error) {
         res.status(400).json({ message: "Error creating auction" });
@@ -43,6 +46,12 @@ export const getAuctions = async (req: Request, res: Response): Promise<void> =>
         const skip  = (page - 1) * limit;
 
         const filter: Record<string, unknown> = {};
+
+        const regionId = req.query.region_id as string | undefined;
+        if (regionId?.trim()) {
+            filter.region_id = regionId.trim();
+        }
+
         const search = req.query.search as string | undefined;
         if (search?.trim()) {
             const regex = new RegExp(search.trim(), "i");
@@ -50,7 +59,11 @@ export const getAuctions = async (req: Request, res: Response): Promise<void> =>
         }
 
         const [auctions, total] = await Promise.all([
-            Auction.find(filter).sort({ key: 1 }).skip(skip).limit(limit),
+            Auction.find(filter)
+                .populate("region_id", "key name")
+                .sort({ key: 1 })
+                .skip(skip)
+                .limit(limit),
             Auction.countDocuments(filter),
         ]);
 
@@ -66,7 +79,8 @@ export const getAuctions = async (req: Request, res: Response): Promise<void> =>
  */
 export const getAuctionById = async (req: Request, res: Response): Promise<void> => {
     try {
-        const auction = await Auction.findById(req.params.id);
+        const auction = await Auction.findById(req.params.id)
+            .populate("region_id", "key name");
         if (!auction) {
             res.status(404).json({ message: "Auction not found" });
             return;
@@ -83,14 +97,15 @@ export const getAuctionById = async (req: Request, res: Response): Promise<void>
  */
 export const updateAuction = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { name } = req.body as { name?: string };
+        const { name, regionId } = req.body as { name?: string; regionId?: string };
         const updateData: Record<string, unknown> = {};
-        if (name !== undefined) updateData.name = name;
+        if (name      !== undefined) updateData.name      = name;
+        if (regionId  !== undefined) updateData.region_id = regionId;
 
         const auction = await Auction.findByIdAndUpdate(req.params.id, updateData, {
             new: true,
             runValidators: true,
-        });
+        }).populate("region_id", "key name");
 
         if (!auction) {
             res.status(404).json({ message: "Auction not found" });

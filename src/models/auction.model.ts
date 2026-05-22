@@ -1,8 +1,9 @@
-import { Document, Model, Schema, model } from "mongoose";
+import { Document, Model, Schema, Types, model } from "mongoose";
 
 export interface IAuction extends Document {
     key: string;
     name: string;
+    region_id?: Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -19,6 +20,11 @@ const auctionSchema = new Schema<IAuction>(
             required: true,
             trim: true,
             maxlength: 120,
+        },
+        region_id: {
+            type: Schema.Types.ObjectId,
+            ref: "Region",
+            default: null,
         },
     },
     { timestamps: true },

@@ -34,13 +34,20 @@ export const getNextKey = async (_req: Request, res: Response): Promise<void> =>
  * @function createOperation
  * @description Creates a new operation. The key is auto-generated via a pre-save hook.
  */
-export const createOperation = async (req: Request, res: Response): Promise<void> => {
+export const createOperation = async (req: Request, res: Response) => {
     try {
         const {
             batch, buyer, client_id, contact_id, title_type, title_date,
             year, model_id, brand_id, pin, vin, color, auction_id, region_id,
             expiration_date, captured_at, has_key, cost, notes,
         } = req.body;
+
+        console.log('Received operation creation request with batch:', req.body); // Debug log
+
+        let oldOperation = await Operation.findOne({ batch })
+        if(oldOperation){
+            return res.status(400).json({ message: "Ya existe una operación con este número de lote" });
+        }
 
         const operation = await Operation.create({
             batch, buyer, client_id, contact_id, title_type, title_date,
@@ -50,6 +57,7 @@ export const createOperation = async (req: Request, res: Response): Promise<void
 
         res.status(201).json({ operation });
     } catch (_error) {
+        console.error(_error);
         res.status(400).json({ message: "Error al crear operación" });
     }
 };
@@ -83,7 +91,8 @@ export const getOperations = async (req: Request, res: Response): Promise<void> 
             Operation.find(filter)
                 .populate<{ brand_id: PopulatedRef }>("brand_id", "key name")
                 .populate<{ model_id: PopulatedRef }>("model_id", "key name")
-                .populate<{ client_id: PopulatedClient }>("client_id", "key fullname")
+                .populate<{ client_id: PopulatedClient }>("client_id", "key fullname buyer")
+                .populate<{ contact_id: PopulatedRef }>("contact_id", "key name")
                 .sort({ key: -1 })
                 .skip(skip)
                 .limit(limit),
@@ -133,6 +142,10 @@ export const updateOperation = async (req: Request, res: Response): Promise<void
             "region_id", "expiration_date", "captured_at", "has_key", "cost", "notes",
         ];
 
+        if (req.body.batch){
+
+        }
+
         const updateData: Record<string, unknown> = {};
         for (const field of allowed) {
             if (req.body[field] !== undefined) updateData[field] = req.body[field];
@@ -151,6 +164,7 @@ export const updateOperation = async (req: Request, res: Response): Promise<void
 
         res.status(200).json({ operation });
     } catch (_error) {
+        console.error(_error);
         res.status(400).json({ message: "Error al actualizar operación" });
     }
 };

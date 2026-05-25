@@ -14,3 +14,6 @@ run().catch((err) => {
   console.error('Error en el proceso de seeders:', err);
   process.exit(1);
 });
+
+//how to run in docker: docker compose exec yarda-will-backend npm run seed
+

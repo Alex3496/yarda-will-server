@@ -108,8 +108,8 @@ const operationSchema = new Schema<IOperation>(
         },
         cost: {
             type: Number,
-            required: true,
             min: 0,
+            default: 0,
         },
         notes: {
             type: String,
@@ -133,6 +133,9 @@ operationSchema.pre("save", async function () {
         this.key = `O-${String(nextNumber).padStart(6, "0")}`;
     }
 });
+
+//indexes
+operationSchema.index({ batch: 1 });
 
 const Operation: Model<IOperation> = model<IOperation>("Operation", operationSchema);
 

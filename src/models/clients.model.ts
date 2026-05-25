@@ -28,6 +28,7 @@ const clientSchema = new Schema<IClient>(
             type: String,
             trim: true,
             maxlength: 120,
+            unique: true,
         },
         email: {
             type: String,

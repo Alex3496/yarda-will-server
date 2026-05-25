@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import Operation from "../models/operations.model";
+import OperationService from "../models/operations_services.model";
+import Service from "../models/service.model";
 
 interface PopulatedRef {
     _id: string;
@@ -39,7 +41,7 @@ export const createOperation = async (req: Request, res: Response) => {
         const {
             batch, buyer, client_id, contact_id, title_type, title_date,
             year, model_id, brand_id, pin, vin, color, auction_id, region_id,
-            expiration_date, captured_at, has_key, cost, notes,
+            expiration_date, captured_at, has_key, cost, notes, service_id
         } = req.body;
 
         console.log('Received operation creation request with batch:', req.body); // Debug log
@@ -54,6 +56,19 @@ export const createOperation = async (req: Request, res: Response) => {
             year, model_id, brand_id, pin, vin, color, auction_id, region_id,
             expiration_date, captured_at, has_key, cost, notes,
         });
+
+        if(service_id){
+            const service = await Service.findById(service_id);
+
+            await OperationService.create({
+                operation_id: operation._id,
+                concept: service ? service.name : "Servicio no encontrado",
+                date: new Date(),
+                type: "D",
+                charge: service ? service.price : 0,
+            });
+
+        }
 
         res.status(201).json({ operation });
     } catch (_error) {

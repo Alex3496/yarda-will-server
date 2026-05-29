@@ -7,6 +7,10 @@ import {
     getOperationById,
     updateOperation,
     deleteOperation,
+    getOperationServices,
+    createOperationService,
+    updateOperationService,
+    deleteOperationService,
 } from "../controllers/operations.controller";
 
 const operationsRouter = Router();
@@ -17,5 +21,10 @@ operationsRouter.get("/",         [authenticate], getOperations);
 operationsRouter.get("/:id",      [authenticate], getOperationById);
 operationsRouter.patch("/:id",    [authenticate], updateOperation);
 operationsRouter.delete("/:id",   [authenticate, requireAdmin], deleteOperation);
+
+operationsRouter.get("/:id/services",                    [authenticate], getOperationServices);
+operationsRouter.post("/:id/services",                   [authenticate], createOperationService);
+operationsRouter.patch("/:id/services/:serviceId",       [authenticate], updateOperationService);
+operationsRouter.delete("/:id/services/:serviceId",      [authenticate, requireAdmin], deleteOperationService);
 
 export default operationsRouter;

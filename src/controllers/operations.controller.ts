@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { Types } from "mongoose";
 import Operation from "../models/operations.model";
 import OperationService from "../models/operations_services.model";
 import Service from "../models/service.model";
@@ -200,5 +201,119 @@ export const deleteOperation = async (req: Request, res: Response): Promise<void
         res.status(200).json({ message: "Operación eliminada correctamente" });
     } catch (_error) {
         res.status(400).json({ message: "ID de operación inválido" });
+    }
+};
+
+/**
+ * @function getOperationServices
+ * @description Returns all charge/payment records linked to an operation.
+ */
+export const getOperationServices = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const services = await OperationService.find({ operation_id: req.params.id }).sort({ date: 1, createdAt: 1 });
+        res.status(200).json({ services });
+    } catch (_error) {
+        res.status(400).json({ message: "ID de operación inválido" });
+    }
+};
+
+/**
+ * @function createOperationService
+ * @description Adds a new charge or payment record to an operation.
+ */
+export const createOperationService = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const operation = await Operation.findById(req.params.id);
+        if (!operation) {
+            res.status(404).json({ message: "Operación no encontrada" });
+            return;
+        }
+
+        const { concept, date, type, charge, payment } = req.body;
+
+        if (!concept || !date || !type) {
+            res.status(400).json({ message: "concept, date y type son requeridos" });
+            return;
+        }
+
+        if (type === "D" && (charge == null || charge < 0)) {
+            res.status(400).json({ message: "El campo charge es requerido para cargos" });
+            return;
+        }
+
+        if (type === "P" && (payment == null || payment < 0)) {
+            res.status(400).json({ message: "El campo payment es requerido para pagos" });
+            return;
+        }
+
+        const service = await OperationService.create({
+            operation_id: new Types.ObjectId(req.params.id as string),
+            concept,
+            date,
+            type,
+            charge: type === "D" ? charge : undefined,
+            payment: type === "P" ? payment : undefined,
+        });
+
+        res.status(201).json({ service });
+    } catch (_error) {
+        console.log(_error);
+        res.status(400).json({ message: "Error al crear registro" });
+    }
+};
+
+/**
+ * @function updateOperationService
+ * @description Updates concept, date, type and amount of an existing charge/payment record.
+ */
+export const updateOperationService = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { concept, date, type, charge, payment } = req.body;
+
+        const update: Record<string, unknown> = {};
+        if (concept !== undefined) update.concept = concept;
+        if (date !== undefined) update.date = date;
+        if (type !== undefined) {
+            update.type = type;
+            if (type === "D") { update.charge = charge; update.payment = undefined; }
+            if (type === "P") { update.payment = payment; update.charge = undefined; }
+        }
+
+        const service = await OperationService.findOneAndUpdate(
+            { _id: req.params.serviceId, operation_id: req.params.id },
+            update,
+            { new: true, runValidators: true },
+        );
+
+        if (!service) {
+            res.status(404).json({ message: "Registro no encontrado" });
+            return;
+        }
+
+        res.status(200).json({ service });
+    } catch (_error) {
+        res.status(400).json({ message: "Error al actualizar registro" });
+    }
+};
+
+/**
+ * @function deleteOperationService
+ * @description Deletes a single charge/payment record from an operation.
+ */
+export const deleteOperationService = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const service = await OperationService.findOneAndDelete({
+            _id: req.params.serviceId,
+            operation_id: req.params.id,
+        });
+
+        if (!service) {
+            res.status(404).json({ message: "Registro no encontrado" });
+            return;
+        }
+
+        res.status(200).json({ message: "Registro eliminado correctamente" });
+    } catch (_error) {
+        res.status(400).json({ message: "ID inválido" });
     }
 };

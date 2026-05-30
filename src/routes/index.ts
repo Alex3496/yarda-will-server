@@ -10,6 +10,7 @@ import contactsRouter from './contacts.routes';
 import auctionsRouter from './auctions.routes';
 import operationsRouter from './operations.routes';
 import servicesRouter from './services.routes';
+import driverAssignmentsRouter from './driverAssignments.routes';
 
 const router = Router();
 
@@ -29,5 +30,6 @@ router.use('/contacts', contactsRouter);
 router.use('/auctions', auctionsRouter);
 router.use('/operations', operationsRouter);
 router.use('/services', servicesRouter);
+router.use('/driver-assignments', driverAssignmentsRouter);
 
 export default router;

@@ -112,9 +112,9 @@ export const getOperations = async (req: Request, res: Response): Promise<void> 
             ];
         }
 
-        const sort = req.query.no_driver === "true"
-            ? { expiration_date: 1 as const }
-            : { key: -1 as const };
+        const sort: Record<string, 1 | -1> = req.query.no_driver === "true"
+            ? { expiration_date: 1 }
+            : { key: -1 };
 
         const [data, total] = await Promise.all([
             Operation.find(filter)

@@ -12,6 +12,7 @@ import {
     updateOperationService,
     deleteOperationService,
 } from "../controllers/operations.controller";
+import { getDriverAssignments } from "../controllers/driverAssignment.controller";
 
 const operationsRouter = Router();
 
@@ -22,6 +23,7 @@ operationsRouter.get("/:id",      [authenticate], getOperationById);
 operationsRouter.patch("/:id",    [authenticate], updateOperation);
 operationsRouter.delete("/:id",   [authenticate, requireAdmin], deleteOperation);
 
+operationsRouter.get("/:id/driver-assignments",          [authenticate], getDriverAssignments);
 operationsRouter.get("/:id/services",                    [authenticate], getOperationServices);
 operationsRouter.post("/:id/services",                   [authenticate], createOperationService);
 operationsRouter.patch("/:id/services/:serviceId",       [authenticate], updateOperationService);

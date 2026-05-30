@@ -97,6 +97,8 @@ export const getOperations = async (req: Request, res: Response): Promise<void> 
         if (settled === "true")  filter.balance = { $lte: 0, $ne: null };
         if (settled === "false") filter.balance = { $gt: 0 };
 
+        if (req.query.no_driver === "true") filter.driver_id = null;
+
         const search = req.query.search as string | undefined;
         if (search?.trim()) {
             const regex = new RegExp(search.trim(), "i");
@@ -110,13 +112,19 @@ export const getOperations = async (req: Request, res: Response): Promise<void> 
             ];
         }
 
+        const sort = req.query.no_driver === "true"
+            ? { expiration_date: 1 as const }
+            : { key: -1 as const };
+
         const [data, total] = await Promise.all([
             Operation.find(filter)
                 .populate<{ brand_id: PopulatedRef }>("brand_id", "key name")
                 .populate<{ model_id: PopulatedRef }>("model_id", "key name")
                 .populate<{ client_id: PopulatedClient }>("client_id", "key fullname buyer")
                 .populate<{ contact_id: PopulatedRef }>("contact_id", "key name")
-                .sort({ key: -1 })
+                .populate<{ region_id: PopulatedRef }>("region_id", "key name")
+                .populate<{ auction_id: PopulatedRef }>("auction_id", "key name")
+                .sort(sort)
                 .skip(skip)
                 .limit(limit),
             Operation.countDocuments(filter),
@@ -140,7 +148,8 @@ export const getOperationById = async (req: Request, res: Response): Promise<voi
             .populate("client_id",  "key fullname")
             .populate("contact_id", "key name")
             .populate("auction_id", "key name")
-            .populate("region_id",  "key name");
+            .populate("region_id",  "key name")
+            .populate("driver_id",  "key name");
 
         if (!operation) {
             res.status(404).json({ message: "Operación no encontrada" });
@@ -163,6 +172,7 @@ export const updateOperation = async (req: Request, res: Response): Promise<void
             "batch", "buyer", "client_id", "contact_id", "title_type", "title_date",
             "year", "model_id", "brand_id", "pin", "vin", "color", "auction_id",
             "region_id", "expiration_date", "captured_at", "has_key", "cost", "notes",
+            "driver_id", "driver_assigned_at", "levantamiento_date",
         ];
 
         if (req.body.batch){

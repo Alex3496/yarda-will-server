@@ -6,6 +6,9 @@ export interface IOperation extends Document {
     buyer?: string;
     client_id?: Types.ObjectId;
     contact_id?: Types.ObjectId;
+    driver_id?: Types.ObjectId;
+    driver_assigned_at?: Date;
+    levantamiento_date?: Date;
     title_type?: string;
     title_date?: Date;
     year: number;
@@ -51,6 +54,19 @@ const operationSchema = new Schema<IOperation>(
         contact_id: {
             type: Schema.Types.ObjectId,
             ref: "Contact",
+        },
+        driver_id: {
+            type: Schema.Types.ObjectId,
+            ref: "Driver",
+            default: null,
+        },
+        driver_assigned_at: {
+            type: Date,
+            default: null,
+        },
+        levantamiento_date: {
+            type: Date,
+            default: null,
         },
         model_id: {
             type: Schema.Types.ObjectId,

@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 import Operation from "../models/operations.model";
 import OperationService from "../models/operations_services.model";
 import Service from "../models/service.model";
+import { recalculateBalance } from "../services/operations.service";
 
 interface PopulatedRef {
     _id: string;
@@ -69,6 +70,7 @@ export const createOperation = async (req: Request, res: Response) => {
                 charge: service ? service.price : 0,
             });
 
+            await recalculateBalance(String(operation._id));
         }
 
         res.status(201).json({ operation });
@@ -90,6 +92,11 @@ export const getOperations = async (req: Request, res: Response): Promise<void> 
         const skip  = (page - 1) * limit;
 
         const filter: Record<string, unknown> = {};
+
+        const settled = req.query.settled as string | undefined;
+        if (settled === "true")  filter.balance = { $lte: 0, $ne: null };
+        if (settled === "false") filter.balance = { $gt: 0 };
+
         const search = req.query.search as string | undefined;
         if (search?.trim()) {
             const regex = new RegExp(search.trim(), "i");
@@ -178,6 +185,8 @@ export const updateOperation = async (req: Request, res: Response): Promise<void
             return;
         }
 
+        await recalculateBalance(String(operation._id));
+
         res.status(200).json({ operation });
     } catch (_error) {
         console.error(_error);
@@ -255,6 +264,8 @@ export const createOperationService = async (req: Request, res: Response): Promi
             payment: type === "P" ? payment : undefined,
         });
 
+        await recalculateBalance(String(req.params.id));
+
         res.status(201).json({ service });
     } catch (_error) {
         console.log(_error);
@@ -290,6 +301,8 @@ export const updateOperationService = async (req: Request, res: Response): Promi
             return;
         }
 
+        await recalculateBalance(String(req.params.id));
+
         res.status(200).json({ service });
     } catch (_error) {
         res.status(400).json({ message: "Error al actualizar registro" });
@@ -311,6 +324,8 @@ export const deleteOperationService = async (req: Request, res: Response): Promi
             res.status(404).json({ message: "Registro no encontrado" });
             return;
         }
+
+        await recalculateBalance(String(req.params.id));
 
         res.status(200).json({ message: "Registro eliminado correctamente" });
     } catch (_error) {

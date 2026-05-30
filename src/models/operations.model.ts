@@ -20,6 +20,7 @@ export interface IOperation extends Document {
     captured_at?: Date;
     has_key?: boolean;
     cost: number;
+    balance: number | null;
     notes?: string;
     createdAt: Date;
     updatedAt: Date;
@@ -110,6 +111,10 @@ const operationSchema = new Schema<IOperation>(
             type: Number,
             min: 0,
             default: 0,
+        },
+        balance: {
+            type: Number,
+            default: null,
         },
         notes: {
             type: String,

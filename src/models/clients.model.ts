@@ -22,6 +22,7 @@ const clientSchema = new Schema<IClient>(
             required: true,
             trim: true,
             maxlength: 120,
+            uppercase: true,
         },
         // is like an external id
         buyer: {

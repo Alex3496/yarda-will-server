@@ -20,6 +20,7 @@ const auctionSchema = new Schema<IAuction>(
             required: true,
             trim: true,
             maxlength: 120,
+            uppercase: true,
         },
         region_id: {
             type: Schema.Types.ObjectId,

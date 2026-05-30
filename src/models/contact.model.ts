@@ -20,6 +20,7 @@ const contactSchema = new Schema<IContact>(
             required: true,
             trim: true,
             maxlength: 120,
+            upercase: true,
         },
         phone: {
             type: String,

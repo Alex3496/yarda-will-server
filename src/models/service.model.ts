@@ -20,6 +20,7 @@ const serviceSchema = new Schema<IService>(
             required: true,
             trim: true,
             maxlength: 120,
+            uppercase: true,
         },
         price: {
             type: Number,

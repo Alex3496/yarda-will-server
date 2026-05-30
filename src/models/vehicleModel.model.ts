@@ -20,6 +20,7 @@ const vehicleModelSchema = new Schema<IVehicleModel>(
             required: true,
             trim: true,
             maxlength: 120,
+            uppercase: true,
         },
         brand_id: {
             type: Schema.Types.ObjectId,

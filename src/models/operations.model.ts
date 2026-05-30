@@ -85,6 +85,7 @@ const operationSchema = new Schema<IOperation>(
             type: String,
             trim: true,
             maxlength: 20,
+            uppercase: true,
         },
         vin: {
             type: String,
@@ -96,6 +97,7 @@ const operationSchema = new Schema<IOperation>(
             type: String,
             trim: true,
             maxlength: 60,
+            uppercase: true,
         },
         expiration_date: {
             type: Date,

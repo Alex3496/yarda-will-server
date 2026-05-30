@@ -19,6 +19,7 @@ const regionSchema = new Schema<IRegion>(
             required: true,
             trim: true,
             maxlength: 120,
+            uppercase: true,
         },
     },
     { timestamps: true },

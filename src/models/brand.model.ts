@@ -19,6 +19,7 @@ const brandSchema = new Schema<IBrand>(
             required: true,
             trim: true,
             maxlength: 120,
+            uppercase: true,
         },
     },
     { timestamps: true },

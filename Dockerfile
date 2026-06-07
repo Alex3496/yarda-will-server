@@ -22,16 +22,10 @@ WORKDIR /app
 # Docker reutiliza la capa de "npm install" sin reinstalar nada.
 COPY package*.json ./
 
-# RUN: ejecuta un comando durante la construcción de la imagen.
-# "npm install" instala todas las dependencias (incluidas devDependencies como tsc).
-RUN npm install
+RUN npm install --ignore-scripts && npm rebuild sharp bcrypt
 
-# COPY: ahora copiamos el resto del código fuente.
-# Esto va después de "npm install" a propósito (ver comentario anterior sobre caché).
 COPY . .
 
-# RUN: compilamos TypeScript. El script "build" ejecuta "tsc", que lee
-# tsconfig.json y genera los archivos .js en la carpeta dist/.
 RUN npm run build
 
 
@@ -54,9 +48,7 @@ WORKDIR /app
 # de producción (sin devDependencies como typescript, ts-node-dev, etc.).
 COPY package*.json ./
 
-# "--omit=dev" le dice a npm que ignore las devDependencies.
-# Resultado: node_modules mucho más pequeño en la imagen final.
-RUN npm install --omit=dev
+RUN npm install --omit=dev --ignore-scripts && npm rebuild sharp bcrypt
 
 # COPY --from=builder: copia archivos de la etapa "builder" (no del host).
 # Solo necesitamos la carpeta dist/ con el JavaScript ya compilado.

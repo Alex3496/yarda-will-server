@@ -52,7 +52,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
-      MONGO_URI: mongodb://mongodb_shared:27017/yarda-will
+      MONGO_URI: mongodb://mongodb_shared:27017/yarda-will # Aquí "mongodb_shared" es el nombre del contenedor de MongoDB en la red shared_db.
 
     # env_file: carga variables adicionales desde un archivo .env.
     # Las variables definidas en "environment:" arriba tienen prioridad
@@ -61,6 +61,9 @@ services:
     env_file:
       - .env
 
+    volumes:
+      - /var/services/uploads:/app/uploads # Monta el directorio de uploads del host en el contenedor
+      
     deploy:
       resources:
         limits:

@@ -25,6 +25,7 @@ export interface IOperation extends Document {
     cost: number;
     balance: number | null;
     notes?: string;
+    images?: string[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -138,6 +139,10 @@ const operationSchema = new Schema<IOperation>(
             type: String,
             trim: true,
             maxlength: 1500,
+        },
+        images: {
+            type: [String],
+            default: [],
         },
     },
     { timestamps: true },

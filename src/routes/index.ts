@@ -11,6 +11,7 @@ import auctionsRouter from './auctions.routes';
 import operationsRouter from './operations.routes';
 import servicesRouter from './services.routes';
 import driverAssignmentsRouter from './driverAssignments.routes';
+import imagesRouter from './images.routes';
 
 const router = Router();
 
@@ -31,5 +32,6 @@ router.use('/auctions', auctionsRouter);
 router.use('/operations', operationsRouter);
 router.use('/services', servicesRouter);
 router.use('/driver-assignments', driverAssignmentsRouter);
+router.use('/images', imagesRouter);
 
 export default router;

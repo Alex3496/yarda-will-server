@@ -5,21 +5,13 @@ import sharp from 'sharp';
 import Operation from '../models/operations.model';
 import { uploadsPath } from '../config/multer';
 
-//Comprime una imagen usando Sharp según su tipo MIME, 
-// manteniendo una calidad razonable y limitando el ancho a 1920px.
-const compressImage = async (filePath: string, mimetype: string): Promise<void> => {
-  const image = sharp(filePath).resize({ width: 1920, withoutEnlargement: true });
-
-  let buffer: Buffer;
-  if (mimetype === 'image/jpeg' || mimetype === 'image/jpg') {
-    buffer = await image.jpeg({ quality: 80, mozjpeg: true }).toBuffer();
-  } else if (mimetype === 'image/png') {
-    buffer = await image.png({ compressionLevel: 8 }).toBuffer();
-  } else if (mimetype === 'image/webp') {
-    buffer = await image.webp({ quality: 80 }).toBuffer();
-  } else {
-    return;
-  }
+//Convierte la imagen a formato webp, 
+// con un ancho máximo de 1920px y calidad del 80% para optimizar el tamaño sin perder mucha calidad.
+const compressImage = async (filePath: string): Promise<void> => {
+  const buffer = await sharp(filePath)
+    .resize({ width: 1920, withoutEnlargement: true })
+    .webp({ quality: 80 })
+    .toBuffer();
 
   fs.writeFileSync(filePath, buffer);
 };
@@ -47,7 +39,7 @@ export const uploadImage = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    await compressImage(req.file.path, req.file.mimetype);
+    await compressImage(req.file.path);
 
     // Construye la URL de la imagen y la agrega a la operación.
     const url = buildImageUrl(req, req.file.filename);

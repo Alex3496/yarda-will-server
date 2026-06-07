@@ -24,9 +24,8 @@ const storage = multer.diskStorage({
   // Indica la carpeta destino para cada archivo subido.
   destination: (_req, _file, cb) => cb(null, uploadsPath),
   // Genera un nombre único para evitar que dos archivos se pisen entre sí.
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `${crypto.randomUUID()}${ext}`);
+  filename: (_req, _file, cb) => {
+    cb(null, `${crypto.randomUUID()}.webp`);
   },
 });
 

@@ -62,7 +62,7 @@ services:
       - .env
 
     volumes:
-      - /var/services/uploads:/app/uploads # Monta el directorio de uploads del host en el contenedor
+      - /var/services/uploads/yarda-will:/app/uploads # Monta el directorio de uploads del host en el contenedor
       
     deploy:
       resources:

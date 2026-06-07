@@ -37,13 +37,13 @@ const fileFilter = (
   cb: multer.FileFilterCallback,
 ) => {
   // Lista de tipos MIME permitidos para imágenes.
-  const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
+  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
   // Si el archivo es una imagen permitida, se acepta.
   if (allowed.includes(file.mimetype)) {
     cb(null, true);
   } else {
     // Si no es una imagen válida, se rechaza con un mensaje claro.
-    cb(new Error('Solo se aceptan imágenes (jpeg, png, gif, webp, jpg).'));
+    cb(new Error('Solo se aceptan imágenes (jpeg, png, webp, jpg).'));
   }
 };
 

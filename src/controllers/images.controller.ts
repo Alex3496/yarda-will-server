@@ -1,8 +1,28 @@
 import type { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
+import sharp from 'sharp';
 import Operation from '../models/operations.model';
 import { uploadsPath } from '../config/multer';
+
+//Comprime una imagen usando Sharp según su tipo MIME, 
+// manteniendo una calidad razonable y limitando el ancho a 1920px.
+const compressImage = async (filePath: string, mimetype: string): Promise<void> => {
+  const image = sharp(filePath).resize({ width: 1920, withoutEnlargement: true });
+
+  let buffer: Buffer;
+  if (mimetype === 'image/jpeg' || mimetype === 'image/jpg') {
+    buffer = await image.jpeg({ quality: 80, mozjpeg: true }).toBuffer();
+  } else if (mimetype === 'image/png') {
+    buffer = await image.png({ compressionLevel: 8 }).toBuffer();
+  } else if (mimetype === 'image/webp') {
+    buffer = await image.webp({ quality: 80 }).toBuffer();
+  } else {
+    return;
+  }
+
+  fs.writeFileSync(filePath, buffer);
+};
 
 // Construye la URL completa para acceder a una imagen dada su ruta de archivo.
 const buildImageUrl = (req: Request, filename: string): string =>
@@ -26,6 +46,8 @@ export const uploadImage = async (req: Request, res: Response): Promise<void> =>
       res.status(404).json({ message: 'Operación no encontrada.' });
       return;
     }
+
+    await compressImage(req.file.path, req.file.mimetype);
 
     // Construye la URL de la imagen y la agrega a la operación.
     const url = buildImageUrl(req, req.file.filename);

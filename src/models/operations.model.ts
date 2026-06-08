@@ -21,6 +21,7 @@ export interface IOperation extends Document {
     region_id?: Types.ObjectId;
     expiration_date?: Date;
     captured_at?: Date;
+    arrival_date?: Date;
     has_key?: boolean;
     cost: number;
     balance: number | null;
@@ -120,6 +121,9 @@ const operationSchema = new Schema<IOperation>(
             type: Date,
         },
         captured_at: {
+            type: Date,
+        },
+        arrival_date:{
             type: Date,
         },
         has_key: {

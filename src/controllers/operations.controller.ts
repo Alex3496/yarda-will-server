@@ -172,7 +172,7 @@ export const updateOperation = async (req: Request, res: Response): Promise<void
             "batch", "buyer", "client_id", "contact_id", "title_type", "title_date",
             "year", "model_id", "brand_id", "pin", "vin", "color", "auction_id",
             "region_id", "expiration_date", "captured_at", "has_key", "cost", "notes",
-            "driver_id", "driver_assigned_at", "levantamiento_date", "images",
+            "driver_id", "driver_assigned_at", "levantamiento_date", "images", "arrival_date"
         ];
 
         if (req.body.batch){

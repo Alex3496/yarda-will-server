@@ -13,6 +13,7 @@ import servicesRouter from './services.routes';
 import driverAssignmentsRouter from './driverAssignments.routes';
 import imagesRouter from './images.routes';
 import publicRouter from './public.routes';
+import portalRouter from './portal.routes';
 
 const router = Router();
 
@@ -22,6 +23,7 @@ router.get('/health', (_req, res) => {
 });
 
 router.use('/public', publicRouter);
+router.use('/portal', portalRouter);
 router.use('/auth', authRouter);
 router.use('/clients', clientsRouter);
 router.use('/users', userRouter);

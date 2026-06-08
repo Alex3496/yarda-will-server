@@ -22,32 +22,38 @@ const buildImageUrl = (req: Request, filename: string): string =>
 
 /**
  * @function uploadImage
- * Maneja la subida de una imagen para una operación específica.
- * Valida que se reciba un archivo, que la operación exista, y luego guarda la URL de la imagen en la base de datos.
+ * Maneja la subida de imágenes para una operación específica. Valida que se hayan recibido archivos,
+ * que la operación exista, comprime las imágenes, las guarda en el servidor, actualiza la base de datos
+ * con las URLs de las imágenes y responde con la lista actualizada de imágenes de la operación.
  */
-export const uploadImage = async (req: Request, res: Response): Promise<void> => {
+export const uploadImages = async (req: Request, res: Response): Promise<void> => {
+  const files = req.files as Express.Multer.File[] | undefined;
+
   try {
-    if (!req.file) {
+    if (!files || files.length === 0) {
       res.status(400).json({ message: 'No se recibió ningún archivo.' });
       return;
     }
 
-    const operation = await Operation.findById(req.params.operationId);
-    if (!operation) {
-      fs.unlinkSync(req.file.path); // Elimina el archivo subido si la operación no existe.
+    const exists = await Operation.exists({ _id: req.params.operationId });
+    if (!exists) {
+      files.forEach((f) => fs.unlinkSync(f.path));
       res.status(404).json({ message: 'Operación no encontrada.' });
       return;
     }
 
-    await compressImage(req.file.path);
+    await Promise.all(files.map((f) => compressImage(f.path)));
 
-    // Construye la URL de la imagen y la agrega a la operación.
-    const url = buildImageUrl(req, req.file.filename);
-    operation.images = [...(operation.images ?? []), url];
-    await operation.save();
+    const urls = files.map((f) => buildImageUrl(req, f.filename));
+    const updated = await Operation.findByIdAndUpdate(
+      req.params.operationId,
+      { $push: { images: { $each: urls } } },
+      { new: true },
+    );
 
-    res.status(201).json({ url, images: operation.images });
+    res.status(201).json({ images: updated!.images });
   } catch (error) {
+    if (files) files.forEach((f) => { if (fs.existsSync(f.path)) fs.unlinkSync(f.path); });
     console.error(error);
     res.status(500).json({ message: 'Error al subir imagen.' });
   }

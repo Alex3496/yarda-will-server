@@ -1,6 +1,7 @@
 import { Document, Model, Types, Schema, model } from "mongoose";
 
 export interface IDriverAssignment extends Document {
+    key: string;
     operation_ids: Types.ObjectId[];
     driver_id: Types.ObjectId;
     assigned_at: Date;
@@ -12,6 +13,11 @@ export interface IDriverAssignment extends Document {
 
 const driverAssignmentSchema = new Schema<IDriverAssignment>(
     {
+        key: {
+            type: String,
+            unique: true,
+            index: true,
+        },
         operation_ids: {
             type: [{ type: Schema.Types.ObjectId, ref: "Operation" }],
             required: true,
@@ -37,6 +43,20 @@ const driverAssignmentSchema = new Schema<IDriverAssignment>(
     },
     { timestamps: true },
 );
+
+driverAssignmentSchema.pre("save", async function () {
+    if (this.isNew) {
+        const last = await (this.constructor as Model<IDriverAssignment>)
+            .findOne({}, { key: 1 })
+            .sort({ key: -1 });
+
+        const nextNumber = last
+            ? Number.parseInt(last.key.replace("V-", ""), 10) + 1
+            : 1;
+
+        this.key = `V-${String(nextNumber).padStart(6, "0")}`;
+    }
+});
 
 driverAssignmentSchema.index({ operation_ids: 1 });
 driverAssignmentSchema.index({ driver_id: 1 });

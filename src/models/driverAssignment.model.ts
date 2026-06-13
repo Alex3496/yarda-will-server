@@ -1,8 +1,13 @@
 import { Document, Model, Types, Schema, model } from "mongoose";
 
+export interface IDriverAssignmentOperation {
+    operation_id: Types.ObjectId;
+    freight_cost: number;
+}
+
 export interface IDriverAssignment extends Document {
     key: string;
-    operation_ids: Types.ObjectId[];
+    operations: IDriverAssignmentOperation[];
     driver_id: Types.ObjectId;
     assigned_at: Date;
     levantamiento_date: Date | null;
@@ -18,8 +23,22 @@ const driverAssignmentSchema = new Schema<IDriverAssignment>(
             unique: true,
             index: true,
         },
-        operation_ids: {
-            type: [{ type: Schema.Types.ObjectId, ref: "Operation" }],
+        operations: {
+            type: [
+                {
+                    operation_id: {
+                        type: Schema.Types.ObjectId,
+                        ref: "Operation",
+                        required: true,
+                    },
+                    freight_cost: {
+                        type: Number,
+                        min: 0,
+                        default: 0,
+                    },
+                    _id: false,
+                },
+            ],
             required: true,
         },
         driver_id: {
@@ -58,7 +77,7 @@ driverAssignmentSchema.pre("save", async function () {
     }
 });
 
-driverAssignmentSchema.index({ operation_ids: 1 });
+driverAssignmentSchema.index({ "operations.operation_id": 1 });
 driverAssignmentSchema.index({ driver_id: 1 });
 
 const DriverAssignment: Model<IDriverAssignment> = model<IDriverAssignment>(

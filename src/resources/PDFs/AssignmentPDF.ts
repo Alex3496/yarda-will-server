@@ -32,6 +32,7 @@ interface AssignmentOperationRow {
     expiration_date?: Date | null;
     region_id?: PopulatedName | null;
     auction_id?: PopulatedName | null;
+    freight_cost?: number;
 }
 
 export interface AssignmentPDFInput {
@@ -39,7 +40,7 @@ export interface AssignmentPDFInput {
     driver_id: PopulatedDriver;
     assigned_at: Date;
     levantamiento_date?: Date | null;
-    operation_ids: AssignmentOperationRow[];
+    operations: AssignmentOperationRow[];
 }
 
 const DATE_FMT = (d: Date | string) =>
@@ -72,14 +73,19 @@ export async function generateAssignmentPDF(data: AssignmentPDFInput): Promise<B
             headerCell("VIN"),
             headerCell("Expiración"),
             headerCell("Región / Subasta"),
+            headerCell("Flete"),
         ],
-        ...data.operation_ids.map((op) => {
+        ...data.operations.map((op) => {
             const vehiculo = [op.year, op.brand_id?.name, op.model_id?.name]
                 .filter(Boolean)
                 .join(" ");
             const regionSubasta = [op.region_id?.name, op.auction_id?.name]
                 .filter(Boolean)
                 .join(" / ");
+            const freight = Number(op.freight_cost ?? 0).toLocaleString("es-MX", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            });
             return [
                 cell(op.batch ?? ""),
                 cell(op.key),
@@ -88,6 +94,7 @@ export async function generateAssignmentPDF(data: AssignmentPDFInput): Promise<B
                 cell(op.vin ?? ""),
                 cell(op.expiration_date ? DATE_FMT(op.expiration_date) : "", true),
                 cell(regionSubasta),
+                cell(`$${freight}`, true),
             ];
         }),
     ];
@@ -114,7 +121,7 @@ export async function generateAssignmentPDF(data: AssignmentPDFInput): Promise<B
                 ],
                 [
                     { text: "Unidades:", bold: true, fontSize: 11, border: [false, false, false, false] },
-                    { text: String(data.operation_ids.length), fontSize: 11, border: [false, false, false, false] },
+                    { text: String(data.operations.length), fontSize: 11, border: [false, false, false, false] },
                 ],
             ],
         },
@@ -177,7 +184,7 @@ export async function generateAssignmentPDF(data: AssignmentPDFInput): Promise<B
             {
                 table: {
                     headerRows: 1,
-                    widths: [60, 55, 110, 50, 90, 60, "*"],
+                    widths: [55, 52, 108, 46, 85, 58, "*", 72],
                     body: tableBody,
                 },
                 layout: {

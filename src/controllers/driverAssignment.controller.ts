@@ -6,6 +6,7 @@ import Driver from "../models/driver.model";
 import OperationService from "../models/operations_services.model";
 import { recalculateBalance } from "../services/operations.service";
 import { generateAssignmentPDF } from "../resources/PDFs/AssignmentPDF";
+import { generateDriverReportPDF, ReportOperationRow } from "../resources/PDFs/DriverReportPDF";
 
 interface OperationInput {
     operation_id: string;
@@ -165,7 +166,7 @@ export const previewPDFAsignment = async (req: Request, res: Response): Promise<
         const [driver, dbOperations] = await Promise.all([
             Driver.findById(driver_id).select("key name"),
             Operation.find({ _id: { $in: operationIds } })
-                .select("key batch year color vin expiration_date brand_id model_id region_id auction_id")
+                .select("key buyer batch year color pin vin expiration_date brand_id model_id region_id auction_id")
                 .populate("brand_id", "name")
                 .populate("model_id", "name")
                 .populate("region_id", "name")
@@ -197,6 +198,89 @@ export const previewPDFAsignment = async (req: Request, res: Response): Promise<
     }
 };
 
+export const getDriverReportPDF = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const driverId = String(req.query.driver_id ?? "").trim();
+        const fromRaw = req.query.from as string | undefined;
+        const toRaw = req.query.to as string | undefined;
+        const includeFreight = req.query.include_freight === "true";
+
+        if (!Types.ObjectId.isValid(driverId)) {
+            res.status(400).json({ message: "driver_id inválido" });
+            return;
+        }
+
+        const fromDate = fromRaw ? new Date(fromRaw) : null;
+        const toDate = toRaw ? new Date(toRaw) : null;
+
+        if (!fromDate || !toDate || Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+            res.status(400).json({ message: "Rango de fechas inválido" });
+            return;
+        }
+
+        fromDate.setHours(0, 0, 0, 0);
+        toDate.setHours(23, 59, 59, 999);
+
+        const driver = await Driver.findById(driverId).select("key name");
+        if (!driver) {
+            res.status(404).json({ message: "Chofer no encontrado" });
+            return;
+        }
+
+        const assignments = await DriverAssignment.find({
+            driver_id: new Types.ObjectId(driverId),
+            levantamiento_date: { $gte: fromDate, $lte: toDate },
+        })
+            .populate({
+                path: "operations.operation_id",
+                select: "key batch year color title_type brand_id model_id region_id auction_id contact_id client_id",
+                populate: [
+                    { path: "brand_id", select: "name" },
+                    { path: "model_id", select: "name" },
+                    { path: "region_id", select: "name" },
+                    { path: "auction_id", select: "name" },
+                    { path: "contact_id", select: "name" },
+                    { path: "client_id", select: "fullname" },
+                ],
+            })
+            .sort({ levantamiento_date: 1 });
+
+        const operationRows: ReportOperationRow[] = [];
+        for (const assignment of assignments) {
+            for (const item of assignment.operations) {
+                const op = item.operation_id as unknown as { toObject?: () => Record<string, unknown> };
+                const opData = (typeof op?.toObject === "function" ? op.toObject() : (op as Record<string, unknown>)) ?? {};
+                operationRows.push({
+                    ...(opData as object),
+                    assignment_key: assignment.key,
+                    levantamiento_date: assignment.levantamiento_date,
+                    freight_cost: item.freight_cost,
+                } as ReportOperationRow);
+            }
+        }
+
+        if (operationRows.length === 0) {
+            res.status(404).json({ message: "No hay asignaciones con levantamiento en ese rango" });
+            return;
+        }
+
+        const buffer = await generateDriverReportPDF({
+            driver: driver as any,
+            from: fromDate,
+            to: toDate,
+            includeFreight,
+            operations: operationRows,
+        });
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `inline; filename="reporte-${driver.key}.pdf"`);
+        res.send(buffer);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al generar reporte" });
+    }
+};
+
 export const getPDFAsignment = async (req: Request<{ id: string }>, res: Response): Promise<void> => {
     try {
         const assignmentId = req.params.id;
@@ -209,7 +293,7 @@ export const getPDFAsignment = async (req: Request<{ id: string }>, res: Respons
             .populate<{ driver_id: { key: string; name: string } }>("driver_id", "key name")
             .populate({
                 path: "operations.operation_id",
-                select: "key batch year color vin expiration_date brand_id model_id region_id auction_id",
+                select: "key buyer batch year color pin vin expiration_date brand_id model_id region_id auction_id",
                 populate: [
                     { path: "brand_id", select: "name" },
                     { path: "model_id", select: "name" },

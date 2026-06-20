@@ -9,7 +9,7 @@ import VehicleModel from "../../../models/vehicleModel.model";
 
 export const title = "Operaciones de demostracion";
 export const description =
-	"Crea 500 operaciones y registros relacionados en operation services con folio de 6 digitos";
+	"Crea 50 operaciones del ultimo mes y registros relacionados en operation services con folio de 6 digitos";
 
 type EntityWithId = {
 	_id: Types.ObjectId;
@@ -57,7 +57,8 @@ function randomDateBack(daysBack: number): Date {
 }
 
 export const seeder = async (): Promise<void> => {
-	const COUNT = 500;
+	const COUNT = 50;
+	const DAYS_BACK = 30; // todas las fechas dentro del ultimo mes
 
 	const [clients, contacts, auctions, vehicleModels, services] = await Promise.all([
 		Client.find({}, { _id: 1, buyer: 1 }).lean<ClientLite[]>(),
@@ -98,7 +99,7 @@ export const seeder = async (): Promise<void> => {
 		const contact = pick(contacts, i * 5 + 3);
 		const auction = pick(auctions, i * 7 + 2);
 		const model = pick(vehicleModels, i * 11 + 1);
-		const capturedAt = randomDateBack(540);
+		const capturedAt = randomDateBack(DAYS_BACK);
 		const hasTitleDate = i % 3 !== 0;
 
 		return {
@@ -108,7 +109,7 @@ export const seeder = async (): Promise<void> => {
 			client_id: client._id,
 			contact_id: contact._id,
 			title_type: i % 2 === 0 ? "mail" : "driver",
-			title_date: hasTitleDate ? randomDateBack(500) : undefined,
+			title_date: hasTitleDate ? randomDateBack(DAYS_BACK) : undefined,
 			year,
 			model_id: model._id,
 			brand_id: model.brand_id,
@@ -117,7 +118,7 @@ export const seeder = async (): Promise<void> => {
 			color: pick(["White", "Black", "Gray", "Silver", "Blue", "Red"], i),
 			auction_id: auction._id,
 			region_id: auction.region_id ?? undefined,
-			expiration_date: randomDateBack(365),
+			expiration_date: randomDateBack(DAYS_BACK),
 			captured_at: capturedAt,
 			has_key: i % 4 !== 0,
 			cost: 1200 + ((i * 137) % 18000),
@@ -141,7 +142,7 @@ export const seeder = async (): Promise<void> => {
 		const svcA = pick(services, i);
 		const svcB = pick(services, i * 3 + 1);
 
-		const chargeDate = randomDateBack(420);
+		const chargeDate = randomDateBack(DAYS_BACK);
 		const chargeAmount = Math.max(50, Math.round(svcA.price * (0.7 + (i % 6) * 0.08)));
 
 		operationServiceDocs.push({
@@ -157,7 +158,7 @@ export const seeder = async (): Promise<void> => {
 			operationServiceDocs.push({
 				operation_id: operation._id,
 				concept: `${svcB.name} PAYMENT`,
-				date: randomDateBack(300),
+				date: randomDateBack(DAYS_BACK),
 				type: "P",
 				payment: paymentAmount,
 			});

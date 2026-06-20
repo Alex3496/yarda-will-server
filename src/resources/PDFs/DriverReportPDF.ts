@@ -21,32 +21,40 @@ pdfmake.fonts = {
 interface PopulatedName { name: string }
 interface PopulatedDriver { key: string; name: string }
 
-interface AssignmentOperationRow {
+interface PopulatedFullname { fullname: string }
+
+export interface ReportOperationRow {
+    assignment_key: string;
+    levantamiento_date?: Date | null;
     key: string;
-    buyer?: string;
     batch?: string;
-    year: number;
+    year?: number;
     brand_id?: PopulatedName | null;
     model_id?: PopulatedName | null;
     color?: string;
-    pin?: string;
-    vin?: string;
-    expiration_date?: Date | null;
     region_id?: PopulatedName | null;
     auction_id?: PopulatedName | null;
+    contact_id?: PopulatedName | null;
+    client_id?: PopulatedFullname | null;
+    title_type?: string;
     freight_cost?: number;
 }
 
-export interface AssignmentPDFInput {
-    key: string;
-    driver_id: PopulatedDriver;
-    assigned_at: Date;
-    levantamiento_date?: Date | null;
-    operations: AssignmentOperationRow[];
+export interface DriverReportPDFInput {
+    driver: PopulatedDriver;
+    from: Date;
+    to: Date;
+    includeFreight: boolean;
+    operations: ReportOperationRow[];
 }
+
+const TITLE_LABEL: Record<string, string> = { mail: "Mail", driver: "Driver" };
 
 const DATE_FMT = (d: Date | string) =>
     new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+const MONEY_FMT = (n: number) =>
+    `$${Number(n ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const headerCell = (text: string) => ({
     text,
@@ -64,34 +72,54 @@ const cell = (text: string, center = false) => ({
     alignment: center ? "center" : "left",
 });
 
-export async function generateAssignmentPDF(data: AssignmentPDFInput): Promise<Buffer> {
-    // columns: Lote | Comprador | Vehículo | PIN | Expiración | Región / Subasta
-    const tableBody = [
-        [
-            headerCell("Lote"),
-            headerCell("Buyer"),
-            headerCell("Vehículo"),
-            headerCell("PIN"),
-            headerCell("Expiración"),
-            headerCell("Región / Subasta"),
-        ],
-        ...data.operations.map((op) => {
-            const vehiculo = [op.year, op.brand_id?.name, op.model_id?.name, op.color]
-                .filter(Boolean)
-                .join(" ");
-            const regionSubasta = [op.region_id?.name, op.auction_id?.name]
-                .filter(Boolean)
-                .join(" / ");
-            return [
-                cell(op.batch ?? ""),
-                cell(op.buyer ?? ""),
-                cell(vehiculo),
-                cell(op.pin ?? ""),
-                cell(op.expiration_date ? DATE_FMT(op.expiration_date) : "", true),
-                cell(regionSubasta),
-            ];
-        }),
+export async function generateDriverReportPDF(data: DriverReportPDFInput): Promise<Buffer> {
+    const { includeFreight } = data;
+    const totalFreight = data.operations.reduce((sum, op) => sum + Number(op.freight_cost ?? 0), 0);
+
+    // columns: Fecha | Contacto | Subasta | Lote | Vehículo | Título | Cliente | [Flete]
+    const headerRow = [
+        headerCell("Fecha"),
+        headerCell("Contacto"),
+        headerCell("Subasta"),
+        headerCell("Lote"),
+        headerCell("Vehículo"),
+        headerCell("Título"),
+        headerCell("Cliente"),
     ];
+    if (includeFreight) headerRow.push(headerCell("Flete"));
+
+    const dataRows = data.operations.map((op) => {
+        const vehiculo = [op.year, op.brand_id?.name, op.model_id?.name]
+            .filter(Boolean)
+            .join(" ");
+        const row = [
+            cell(op.levantamiento_date ? DATE_FMT(op.levantamiento_date) : "", true),
+            cell(op.contact_id?.name ?? ""),
+            cell(op.auction_id?.name ?? ""),
+            cell(op.batch ?? ""),
+            cell(vehiculo),
+            cell(op.title_type ? (TITLE_LABEL[op.title_type] ?? op.title_type) : "", true),
+            cell(op.client_id?.fullname ?? ""),
+        ];
+        if (includeFreight) row.push(cell(MONEY_FMT(Number(op.freight_cost ?? 0)), true));
+        return row;
+    });
+
+    const tableBody: any[] = [headerRow, ...dataRows];
+
+    if (includeFreight) {
+        const totalRow: any[] = Array(headerRow.length - 2).fill({ text: "", border: [false, false, false, false] });
+        totalRow.push(
+            { text: "TOTAL", bold: true, fontSize: 10, alignment: "right", margin: [5, 5, 5, 5] },
+            { text: MONEY_FMT(totalFreight), bold: true, fontSize: 10, alignment: "center", margin: [5, 5, 5, 5] },
+        );
+        tableBody.push(totalRow);
+    }
+
+    //              Fecha  Contacto  Subasta  Lote  Vehículo  Título  Cliente  Flete
+    const tableWidths = includeFreight
+        ? [65, "*", "*", 50, "*", 50, "*", 75]
+        : [65, "*", "*", 50, "*", 50, "*"];
 
     const infoTable = {
         table: {
@@ -99,19 +127,11 @@ export async function generateAssignmentPDF(data: AssignmentPDFInput): Promise<B
             body: [
                 [
                     { text: "Chofer:", bold: true, fontSize: 11, border: [false, false, false, false] },
-                    { text: `${data.driver_id.name} (${data.driver_id.key})`, fontSize: 11, border: [false, false, false, false] },
+                    { text: `${data.driver.name} (${data.driver.key})`, fontSize: 11, border: [false, false, false, false] },
                 ],
                 [
-                    { text: "Destino:", bold: true, fontSize: 11, border: [false, false, false, false] },
-                    { text: "Tijuana", fontSize: 11, border: [false, false, false, false] },
-                ],
-                [
-                    { text: "Asignación:", bold: true, fontSize: 11, border: [false, false, false, false] },
-                    { text: DATE_FMT(data.assigned_at), fontSize: 11, border: [false, false, false, false] },
-                ],
-                [
-                    { text: "Levantamiento:", bold: true, fontSize: 11, border: [false, false, false, false] },
-                    { text: data.levantamiento_date ? DATE_FMT(data.levantamiento_date) : "—", fontSize: 11, border: [false, false, false, false] },
+                    { text: "Periodo:", bold: true, fontSize: 11, border: [false, false, false, false] },
+                    { text: `${DATE_FMT(data.from)} – ${DATE_FMT(data.to)}`, fontSize: 11, border: [false, false, false, false] },
                 ],
                 [
                     { text: "Unidades:", bold: true, fontSize: 11, border: [false, false, false, false] },
@@ -131,7 +151,6 @@ export async function generateAssignmentPDF(data: AssignmentPDFInput): Promise<B
             // ── Encabezado ──
             {
                 columns: [
-                    // espacio reservado para logo
                     {
                         stack: [
                             {
@@ -156,16 +175,14 @@ export async function generateAssignmentPDF(data: AssignmentPDFInput): Promise<B
                         ],
                         width: 120,
                     },
-                    // título + no. de viaje
                     {
                         stack: [
-                            { text: "HOJA DE ASIGNACIÓN", fontSize: 22, bold: true, color: "#1a1a2e" },
-                            { text: `No. de Viaje: ${data.key}`, fontSize: 14, color: "#444444", margin: [0, 4, 0, 0] },
+                            { text: "REPORTE DE CHOFER", fontSize: 22, bold: true, color: "#1a1a2e" },
+                            { text: "Filtrado por fecha de levantamiento", fontSize: 11, italics: true, color: "#777777", margin: [0, 4, 0, 0] },
                         ],
                         alignment: "center" as const,
                         margin: [0, 8, 0, 0] as [number, number, number, number],
                     },
-                    // datos del viaje
                     {
                         ...infoTable,
                         alignment: "right" as const,
@@ -178,7 +195,7 @@ export async function generateAssignmentPDF(data: AssignmentPDFInput): Promise<B
             {
                 table: {
                     headerRows: 1,
-                    widths: [55, 60, "*", 70, 75, "*"],
+                    widths: tableWidths,
                     body: tableBody,
                 },
                 layout: {

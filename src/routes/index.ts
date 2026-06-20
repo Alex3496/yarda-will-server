@@ -12,6 +12,7 @@ import operationsRouter from './operations.routes';
 import servicesRouter from './services.routes';
 import driverAssignmentsRouter from './driverAssignments.routes';
 import imagesRouter from './images.routes';
+import loanKeysRouter from './loanKeys.routes';
 import publicRouter from './public.routes';
 import portalRouter from './portal.routes';
 
@@ -37,5 +38,6 @@ router.use('/operations', operationsRouter);
 router.use('/services', servicesRouter);
 router.use('/driver-assignments', driverAssignmentsRouter);
 router.use('/images', imagesRouter);
+router.use('/loan-keys', loanKeysRouter);
 
 export default router;

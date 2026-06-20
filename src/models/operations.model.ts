@@ -14,6 +14,7 @@ export interface IOperation extends Document {
     year: number;
     model_id?: Types.ObjectId;
     brand_id?: Types.ObjectId;
+    deliver_id?: Types.ObjectId;
     pin?: string;
     vin?: string;
     color?: string;
@@ -27,6 +28,7 @@ export interface IOperation extends Document {
     balance: number | null;
     notes?: string;
     images?: string[];
+    delivered_at?: Date;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -85,6 +87,13 @@ const operationSchema = new Schema<IOperation>(
         region_id: {
             type: Schema.Types.ObjectId,
             ref: "Region",
+        },
+        deliver_id:{
+            type: Schema.Types.ObjectId,
+            ref: "User",
+        },
+        delivered_at: {
+            type: Date,
         },
         title_type: {
             type: String,

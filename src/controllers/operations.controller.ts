@@ -4,6 +4,8 @@ import Operation from "../models/operations.model";
 import OperationService from "../models/operations_services.model";
 import Service from "../models/service.model";
 import { recalculateBalance } from "../services/operations.service";
+import User from "../models/user.model";
+import { generateDeliveredReportPDF, DeliveredOperationRow } from "../resources/PDFs/DeliveredReportPDF";
 
 interface PopulatedRef {
     _id: string;
@@ -149,7 +151,8 @@ export const getOperationById = async (req: Request, res: Response): Promise<voi
             .populate("contact_id", "key name")
             .populate("auction_id", "key name")
             .populate("region_id",  "key name")
-            .populate("driver_id",  "key name");
+            .populate("driver_id",  "key name")
+            .populate("deliver_id", "username firstName lastName");
 
         if (!operation) {
             res.status(404).json({ message: "Operación no encontrada" });
@@ -163,6 +166,82 @@ export const getOperationById = async (req: Request, res: Response): Promise<voi
 };
 
 /**
+ * @function getDeliveredReportPDF
+ * @description Generates a PDF report of units delivered within a date range,
+ * optionally filtered by the system user who delivered them. If no user is
+ * provided, all delivered units in the range are included.
+ */
+export const getDeliveredReportPDF = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const deliverIdRaw = String(req.query.deliver_id ?? "").trim();
+        const fromRaw = req.query.from as string | undefined;
+        const toRaw = req.query.to as string | undefined;
+
+        const fromDate = fromRaw ? new Date(fromRaw) : null;
+        const toDate = toRaw ? new Date(toRaw) : null;
+
+        if (!fromDate || !toDate || Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+            res.status(400).json({ message: "Rango de fechas inválido" });
+            return;
+        }
+
+        fromDate.setHours(0, 0, 0, 0);
+        toDate.setHours(23, 59, 59, 999);
+
+        // Usuario opcional: si se envía, debe ser válido; si no, se incluyen todos.
+        let deliverName: string | null = null;
+        const filter: Record<string, unknown> = {
+            delivered_at: { $gte: fromDate, $lte: toDate },
+        };
+
+        if (deliverIdRaw) {
+            if (!Types.ObjectId.isValid(deliverIdRaw)) {
+                res.status(400).json({ message: "deliver_id inválido" });
+                return;
+            }
+            const user = await User.findById(deliverIdRaw).select("username firstName lastName");
+            if (!user) {
+                res.status(404).json({ message: "Usuario no encontrado" });
+                return;
+            }
+            filter.deliver_id = new Types.ObjectId(deliverIdRaw);
+            deliverName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username;
+        }
+
+        const operations = await Operation.find(filter)
+            .select("key batch year color title_type brand_id model_id auction_id contact_id client_id delivered_at deliver_id")
+            .populate("brand_id", "name")
+            .populate("model_id", "name")
+            .populate("auction_id", "name")
+            .populate("contact_id", "name")
+            .populate("client_id", "fullname")
+            .populate("deliver_id", "username firstName lastName")
+            .sort({ delivered_at: 1 });
+
+        if (operations.length === 0) {
+            res.status(404).json({ message: "No hay unidades entregadas en ese rango" });
+            return;
+        }
+
+        const operationRows = operations.map((op) => op.toObject()) as unknown as DeliveredOperationRow[];
+
+        const buffer = await generateDeliveredReportPDF({
+            deliverName,
+            from: fromDate,
+            to: toDate,
+            operations: operationRows,
+        });
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `inline; filename="unidades-entregadas.pdf"`);
+        res.send(buffer);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error al generar reporte" });
+    }
+};
+
+/**
  * @function updateOperation
  * @description Updates allowed fields of an existing operation.
  */
@@ -172,7 +251,8 @@ export const updateOperation = async (req: Request, res: Response): Promise<void
             "batch", "buyer", "client_id", "contact_id", "title_type", "title_date",
             "year", "model_id", "brand_id", "pin", "vin", "color", "auction_id",
             "region_id", "expiration_date", "captured_at", "has_key", "cost", "notes",
-            "driver_id", "driver_assigned_at", "levantamiento_date", "images", "arrival_date"
+            "driver_id", "driver_assigned_at", "levantamiento_date", "images", "arrival_date",
+            "deliver_id", "delivered_at"
         ];
 
         if (req.body.batch){

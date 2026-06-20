@@ -11,12 +11,14 @@ import {
     createOperationService,
     updateOperationService,
     deleteOperationService,
+    getDeliveredReportPDF,
 } from "../controllers/operations.controller";
 import { getDriverAssignments } from "../controllers/driverAssignment.controller";
 
 const operationsRouter = Router();
 
 operationsRouter.get("/next-key", [authenticate], getNextKey);
+operationsRouter.get("/delivered-report-pdf", [authenticate], getDeliveredReportPDF);
 operationsRouter.post("/",        [authenticate], createOperation);
 operationsRouter.get("/",         [authenticate], getOperations);
 operationsRouter.get("/:id",      [authenticate], getOperationById);

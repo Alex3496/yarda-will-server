@@ -24,8 +24,8 @@ export const getNextKey = async (_req: Request, res: Response): Promise<void> =>
  */
 export const createService = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { name, price } = req.body as { name?: string; price?: number };
-        const service = await Service.create({ name, price });
+        const { name, price, type } = req.body as { name?: string; price?: number; type?: "D" | "P" };
+        const service = await Service.create({ name, price, type });
         res.status(201).json({ service });
     } catch (_error) {
         res.status(400).json({ message: "Error al crear servicio" });
@@ -83,10 +83,11 @@ export const getServiceById = async (req: Request, res: Response): Promise<void>
  */
 export const updateService = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { name, price } = req.body as { name?: string; price?: number };
+        const { name, price, type } = req.body as { name?: string; price?: number; type?: "D" | "P" };
         const updateData: Record<string, unknown> = {};
         if (name  !== undefined) updateData.name  = name;
         if (price !== undefined) updateData.price = price;
+        if (type  !== undefined) updateData.type  = type;
 
         const service = await Service.findByIdAndUpdate(
             req.params.id,

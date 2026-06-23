@@ -3,6 +3,7 @@ import { Document, Model, Schema, model } from "mongoose";
 export interface IService extends Document {
     key: string;
     name: string;
+    type: "D" | "P"; // D for debit, P for payment
     price: number;
     createdAt: Date;
     updatedAt: Date;
@@ -21,6 +22,10 @@ const serviceSchema = new Schema<IService>(
             trim: true,
             maxlength: 120,
             uppercase: true,
+        },
+        type: {
+            type: String,
+            enum: ["D", "P"],
         },
         price: {
             type: Number,

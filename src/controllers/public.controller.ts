@@ -23,7 +23,7 @@ export const trackByBatch = async (req: Request, res: Response): Promise<void> =
 
     const op = await Operation.findOne({ batch: new RegExp(`^${batch}$`, 'i') })
       .select(
-        'key batch year color vin has_key buyer captured_at notes images brand_id model_id auction_id region_id',
+        'key batch year color vin has_key buyer captured_at notes images brand_id model_id auction_id region_id arrival_date',
       )
       .populate('brand_id', 'name')
       .populate('model_id', 'name')
@@ -62,6 +62,7 @@ export const trackByBatch = async (req: Request, res: Response): Promise<void> =
         date: s.date,
         amount: s.type === 'D' ? (s.charge ?? 0) : (s.payment ?? 0),
       })),
+      arrival_date: op.arrival_date ?? null,
     };
 
     res.json({ operations: [operation], total: 1 });

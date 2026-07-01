@@ -3,6 +3,10 @@ import { Types } from "mongoose";
 import Operation from "../models/operations.model";
 import OperationService from "../models/operations_services.model";
 import Service from "../models/service.model";
+import Brand from "../models/brand.model";
+import VehicleModel from "../models/vehicleModel.model";
+import Contact from "../models/contact.model";
+import Client from "../models/clients.model";
 import { recalculateBalance } from "../services/operations.service";
 import User from "../models/user.model";
 import { generateDeliveredReportPDF, DeliveredOperationRow } from "../resources/PDFs/DeliveredReportPDF";
@@ -99,11 +103,27 @@ export const getOperations = async (req: Request, res: Response): Promise<void> 
         if (settled === "true")  filter.balance = { $lte: 0, $ne: null };
         if (settled === "false") filter.balance = { $gt: 0 };
 
+        // "delivered" = ya tiene fecha de entrega; "yard" = aún en yarda (sin fecha).
+        const delivery = req.query.delivery as string | undefined;
+        if (delivery === "delivered") filter.delivered_at = { $ne: null };
+        if (delivery === "yard")      filter.delivered_at = null;
+
         if (req.query.no_driver === "true") filter.driver_id = null;
 
         const search = req.query.search as string | undefined;
         if (search?.trim()) {
             const regex = new RegExp(search.trim(), "i");
+
+            // Los nombres de marca/modelo/contacto/cliente viven en colecciones
+            // referenciadas, así que primero resolvemos los _id que hacen match y
+            // luego filtramos las operaciones por esas referencias.
+            const [brandIds, modelIds, contactIds, clientIds] = await Promise.all([
+                Brand.distinct("_id", { name: regex }),
+                VehicleModel.distinct("_id", { name: regex }),
+                Contact.distinct("_id", { name: regex }),
+                Client.distinct("_id", { $or: [{ fullname: regex }, { buyer: regex }] }),
+            ]);
+
             filter.$or = [
                 { key:   regex },
                 { vin:   regex },
@@ -111,6 +131,10 @@ export const getOperations = async (req: Request, res: Response): Promise<void> 
                 { buyer: regex },
                 { batch: regex },
                 { color: regex },
+                { brand_id:   { $in: brandIds } },
+                { model_id:   { $in: modelIds } },
+                { contact_id: { $in: contactIds } },
+                { client_id:  { $in: clientIds } },
             ];
         }
 

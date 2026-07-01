@@ -1,4 +1,5 @@
 import path from "path";
+import { logoColumn } from "./logo";
 
 // pdfmake has no official @types package for its Node.js singleton API
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -139,30 +140,8 @@ export async function generateDeliveredReportPDF(data: DeliveredReportPDFInput):
             // ── Encabezado ──
             {
                 columns: [
-                    {
-                        stack: [
-                            {
-                                canvas: [
-                                    {
-                                        type: "rect",
-                                        x: 0, y: 0,
-                                        w: 110, h: 60,
-                                        r: 4,
-                                        lineColor: "#cccccc",
-                                        lineWidth: 1,
-                                        dash: { length: 4 },
-                                    },
-                                ],
-                            },
-                            {
-                                text: "LOGO",
-                                fontSize: 10,
-                                color: "#bbbbbb",
-                                absolutePosition: { x: 30 + 38, y: 40 + 22 },
-                            },
-                        ],
-                        width: 120,
-                    },
+                    // logo del negocio (o placeholder si falta el archivo)
+                    logoColumn(),
                     {
                         stack: [
                             { text: "REPORTE DE UNIDADES ENTREGADAS", fontSize: 22, bold: true, color: "#1a1a2e" },

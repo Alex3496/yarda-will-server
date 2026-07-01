@@ -51,8 +51,10 @@ COPY package*.json ./
 RUN npm install --omit=dev --ignore-scripts && npm rebuild sharp bcrypt
 
 # COPY --from=builder: copia archivos de la etapa "builder" (no del host).
-# Solo necesitamos la carpeta dist/ con el JavaScript ya compilado.
+# Necesitamos dist/ con el JavaScript ya compilado y assets/ con recursos
+# estáticos (el logo de los reportes PDF), que tsc no copia a dist/.
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/assets ./assets
 
 # Cambiamos al usuario no-root que creamos arriba.
 USER appuser

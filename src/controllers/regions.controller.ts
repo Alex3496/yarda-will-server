@@ -1,6 +1,22 @@
 import { Request, Response } from "express";
 import Region from "../models/region.model";
 
+/** Escapes regex special characters so a name is matched literally. */
+const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Returns true if another region already has the given name (case-insensitive).
+ * Pass `excludeId` when updating to ignore the record being edited.
+ */
+const regionNameExists = async (name: string, excludeId?: string): Promise<boolean> => {
+    const filter: Record<string, unknown> = {
+        name: new RegExp(`^${escapeRegex(name.trim())}$`, "i"),
+    };
+    if (excludeId) filter._id = { $ne: excludeId };
+    const existing = await Region.findOne(filter, { _id: 1 });
+    return existing !== null;
+};
+
 /**
  * @function getNextKey
  * @description Returns the next available region key without persisting a record.
@@ -25,6 +41,12 @@ export const getNextKey = async (_req: Request, res: Response): Promise<void> =>
 export const createRegion = async (req: Request, res: Response): Promise<void> => {
     try {
         const { name } = req.body as { name?: string };
+
+        if (name?.trim() && await regionNameExists(name)) {
+            res.status(409).json({ message: "Ya existe una región con ese nombre." });
+            return;
+        }
+
         const region = await Region.create({ name });
         res.status(201).json({ region });
     } catch (_error) {
@@ -86,6 +108,11 @@ export const updateRegion = async (req: Request, res: Response): Promise<void> =
         const { name } = req.body as { name?: string };
         const updateData: Record<string, unknown> = {};
         if (name !== undefined) updateData.name = name;
+
+        if (name?.trim() && await regionNameExists(name, req.params.id as string)) {
+            res.status(409).json({ message: "Ya existe una región con ese nombre." });
+            return;
+        }
 
         const region = await Region.findByIdAndUpdate(req.params.id, updateData, {
             new: true,

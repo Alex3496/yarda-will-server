@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
+import { Types } from "mongoose";
 import Region from "../models/region.model";
+import Service from "../models/service.model";
+import Operation from "../models/operations.model";
 
 /** Escapes regex special characters so a name is matched literally. */
 const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -133,10 +136,33 @@ export const updateRegion = async (req: Request, res: Response): Promise<void> =
 /**
  * @function deleteRegion
  * @description Deletes a region by its MongoDB ID. Requires admin role.
+ * Returns 409 if any service or operation still references the region.
  */
 export const deleteRegion = async (req: Request, res: Response): Promise<void> => {
     try {
-        const region = await Region.findByIdAndDelete(req.params.id);
+        const id = req.params.id as string;
+        if (!Types.ObjectId.isValid(id)) {
+            res.status(400).json({ message: "Invalid region ID" });
+            return;
+        }
+
+        // Block deletion while the region is still referenced by services or operations
+        const [servicesCount, operationsCount] = await Promise.all([
+            Service.countDocuments({ region_id: id }),
+            Operation.countDocuments({ region_id: id }),
+        ]);
+
+        if (servicesCount > 0 || operationsCount > 0) {
+            const usedBy: string[] = [];
+            if (servicesCount > 0)   usedBy.push(`${servicesCount} servicio(s)`);
+            if (operationsCount > 0) usedBy.push(`${operationsCount} operación(es)`);
+            res.status(409).json({
+                message: `No se puede eliminar la región porque está asignada a ${usedBy.join(" y ")}.`,
+            });
+            return;
+        }
+
+        const region = await Region.findByIdAndDelete(id);
         if (!region) {
             res.status(404).json({ message: "Region not found" });
             return;

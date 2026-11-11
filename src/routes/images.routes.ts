@@ -1,6 +1,6 @@
 import { Router } from 'express';
 //Componentes
-import { upload } from '../config/multer';
+import { uploadImagesMiddleware } from '../config/multer';
 import { authenticate } from '../middlewares/auth.middleware';
 import { uploadImages, deleteImage } from '../controllers/images.controller';
 
@@ -12,9 +12,10 @@ const router = Router();
 //    lo valida con Multer y lo guarda en la carpeta.
 // 3. uploadImage se ejecuta al final, cuando el archivo ya fue procesado,
 //    para asociarlo a la operacion o responder al cliente.
-// Acepta hasta 20 archivos en el campo "images" por request.
-// Diseñado para soportar subida masiva desde móvil en el futuro.
-router.post('/operations/:operationId', authenticate, upload.array('images', 20), uploadImages);
+// Acepta hasta 20 archivos en el campo "images" por request. El frontend sube una foto
+// por request (más confiable con mala conexión) y manda un "upload_id" para evitar duplicados.
+// uploadImagesMiddleware convierte los errores de Multer en respuestas 400/413 claras.
+router.post('/operations/:operationId', authenticate, uploadImagesMiddleware, uploadImages);
 
 // En esta ruta no se sube un archivo nuevo; solo se valida el usuario
 // y luego el controlador elimina la imagen indicada por su nombre.

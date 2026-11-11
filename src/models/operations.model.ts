@@ -28,6 +28,7 @@ export interface IOperation extends Document {
     balance: number | null;
     notes?: string;
     images?: string[];
+    image_upload_ids?: string[];
     delivered_at?: Date;
     createdAt: Date;
     updatedAt: Date;
@@ -156,6 +157,14 @@ const operationSchema = new Schema<IOperation>(
         images: {
             type: [String],
             default: [],
+        },
+        // Client-generated ids of image uploads already stored, so a retried upload
+        // (e.g. the response was lost on a bad mobile connection) is not saved twice.
+        // Hidden from normal queries.
+        image_upload_ids: {
+            type: [String],
+            default: [],
+            select: false,
         },
     },
     { timestamps: true },

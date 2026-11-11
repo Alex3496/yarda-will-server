@@ -2,7 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import type { Request } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 
 
 //Explicacion general: Este archivo configura Multer, una biblioteca de Node.js para manejar 
@@ -46,15 +46,43 @@ const fileFilter = (
   }
 };
 
+// Tamaño máximo por archivo. El frontend comprime las fotos antes de subirlas (~300–500 KB),
+// pero si el navegador no puede comprimir una foto la envía original, y las fotos de
+// celulares actuales pasan fácilmente de 5 MB. El servidor la reduce igual con sharp.
+const MAX_FILE_SIZE_MB = 15;
+
 // Crea la configuración final de Multer para usarla en las rutas.
 export const upload = multer({
   // Usa el almacenamiento en disco definido arriba.
   storage,
-  // Limita el tamaño máximo de cada archivo a 5 MB.
-  limits: { fileSize: 5 * 1024 * 1024 },
+  // Limita el tamaño máximo de cada archivo.
+  limits: { fileSize: MAX_FILE_SIZE_MB * 1024 * 1024 },
   // Aplica el filtro de tipos de archivo.
   fileFilter,
 });
+
+/**
+ * Middleware para subir imágenes con respuestas claras en caso de error.
+ * Sin esto, los errores de Multer (archivo muy grande, tipo no permitido) llegan al
+ * errorHandler global, que en producción responde un 500 genérico.
+ */
+export const uploadImagesMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+  upload.array('images', 20)(req, res, (err: unknown) => {
+    if (!err) return next();
+
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        res.status(413).json({ message: `La imagen supera el tamaño máximo de ${MAX_FILE_SIZE_MB} MB.` });
+        return;
+      }
+      res.status(400).json({ message: `Error al recibir la imagen (${err.code}).` });
+      return;
+    }
+
+    // Errores del fileFilter (tipo de archivo no permitido)
+    res.status(400).json({ message: err instanceof Error ? err.message : 'Imagen inválida.' });
+  });
+};
 
 // Exporta la ruta base donde se guardan los archivos subidos.
 export { uploadsPath };

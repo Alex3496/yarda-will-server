@@ -5,16 +5,27 @@ import sharp from 'sharp';
 import Operation from '../models/operations.model';
 import { uploadsPath } from '../config/multer';
 
-//Convierte la imagen a formato webp, 
+//Convierte la imagen a formato webp,
 // con un ancho máximo de 1920px y calidad del 80% para optimizar el tamaño sin perder mucha calidad.
+// .rotate() sin argumentos aplica la orientación EXIF: las fotos de celular vienen "acostadas"
+// con una marca de rotación que se pierde al convertir a webp.
 const compressImage = async (filePath: string): Promise<void> => {
   const buffer = await sharp(filePath)
+    .rotate()
     .resize({ width: 1920, withoutEnlargement: true })
     .webp({ quality: 80 })
     .toBuffer();
 
-  fs.writeFileSync(filePath, buffer);
+  await fs.promises.writeFile(filePath, buffer);
 };
+
+// Borra del disco los archivos recibidos (cuando la subida se rechaza o es un duplicado).
+const removeFiles = (files: Express.Multer.File[]): void => {
+  files.forEach((f) => { if (fs.existsSync(f.path)) fs.unlinkSync(f.path); });
+};
+
+// Id generado por el navegador para cada foto; permite reintentar sin duplicar.
+const UPLOAD_ID_PATTERN = /^[A-Za-z0-9-]{8,64}$/;
 
 // Construye la URL completa para acceder a una imagen dada su ruta de archivo.
 const buildImageUrl = (req: Request, filename: string): string =>
@@ -35,25 +46,57 @@ export const uploadImages = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const exists = await Operation.exists({ _id: req.params.operationId });
-    if (!exists) {
-      files.forEach((f) => fs.unlinkSync(f.path));
+    const operationId = req.params.operationId;
+    const rawUploadId = (req.body as { upload_id?: unknown } | undefined)?.upload_id;
+    const uploadId = typeof rawUploadId === 'string' && UPLOAD_ID_PATTERN.test(rawUploadId)
+      ? rawUploadId
+      : undefined;
+
+    const operation = await Operation.findById(operationId).select('images +image_upload_ids');
+    if (!operation) {
+      removeFiles(files);
       res.status(404).json({ message: 'Operación no encontrada.' });
       return;
     }
 
-    await Promise.all(files.map((f) => compressImage(f.path)));
+    // Retry of an upload that was already stored (the client never got the response): answer OK
+    if (uploadId && operation.image_upload_ids?.includes(uploadId)) {
+      removeFiles(files);
+      res.status(200).json({ images: operation.images ?? [], duplicate: true });
+      return;
+    }
+
+    // One at a time: compressing many large photos in parallel can exhaust the container's memory
+    for (const f of files) {
+      await compressImage(f.path);
+    }
 
     const urls = files.map((f) => buildImageUrl(req, f.filename));
-    const updated = await Operation.findByIdAndUpdate(
-      req.params.operationId,
-      { $push: { images: { $each: urls } } },
-      { new: true },
-    );
 
-    res.status(201).json({ images: updated!.images });
+    // Conditional update so two simultaneous retries of the same upload_id cannot both be stored
+    const filter: Record<string, unknown> = { _id: operationId };
+    const update: Record<string, unknown> = { $push: { images: { $each: urls } } };
+    if (uploadId) {
+      filter.image_upload_ids = { $ne: uploadId };
+      update.$addToSet = { image_upload_ids: uploadId };
+    }
+
+    const updated = await Operation.findOneAndUpdate(filter, update, { new: true });
+    if (!updated) {
+      // Lost the race against a parallel retry (or the operation was deleted meanwhile)
+      removeFiles(files);
+      const current = await Operation.findById(operationId).select('images');
+      if (!current) {
+        res.status(404).json({ message: 'Operación no encontrada.' });
+        return;
+      }
+      res.status(200).json({ images: current.images ?? [], duplicate: true });
+      return;
+    }
+
+    res.status(201).json({ images: updated.images });
   } catch (error) {
-    if (files) files.forEach((f) => { if (fs.existsSync(f.path)) fs.unlinkSync(f.path); });
+    if (files) removeFiles(files);
     console.error(error);
     res.status(500).json({ message: 'Error al subir imagen.' });
   }

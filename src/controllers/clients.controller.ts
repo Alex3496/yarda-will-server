@@ -1,5 +1,26 @@
 import { Request, Response } from "express";
-import Client from "../models/clients.model";
+import Client, { normalizeBuyer } from "../models/clients.model";
+
+/**
+ * @function findBuyerConflict
+ * @description Returns a 409 message if another client already uses `buyer`, or null if it is free.
+ * `buyer` must already be normalized. Pass `excludeId` when updating.
+ */
+const findBuyerConflict = async (buyer: string | null, excludeId?: string): Promise<string | null> => {
+    if (!buyer) return null;
+
+    const filter: Record<string, unknown> = { buyer };
+    if (excludeId) filter._id = { $ne: excludeId };
+
+    const other = await Client.findOne(filter, { key: 1, fullname: 1 });
+    return other ? `El Buyer Id ${buyer} ya pertenece a ${other.fullname} (${other.key}).` : null;
+};
+
+/** True when a save failed because of the unique buyer index (e.g. two saves at the same time). */
+const isBuyerIndexConflict = (error: unknown): boolean => {
+    const e = error as { code?: number; keyPattern?: Record<string, unknown> };
+    return e?.code === 11000 && !!e.keyPattern && "buyer" in e.keyPattern;
+};
 
 export const getNextKey = async (_req: Request, res: Response): Promise<void> => {
     try {
@@ -18,13 +39,25 @@ export const createClient = async (req: Request, res: Response): Promise<void> =
     try {
         const { fullname, buyer, email, phone } = req.body as {
             fullname?: string;
-            buyer?: string;
+            buyer?: string | null;
             email?: string;
             phone?: string;
         };
-        const client = await Client.create({ fullname, buyer, email, phone });
+
+        const normalizedBuyer = normalizeBuyer(buyer);
+        const conflict = await findBuyerConflict(normalizedBuyer);
+        if (conflict) {
+            res.status(409).json({ message: conflict });
+            return;
+        }
+
+        const client = await Client.create({ fullname, buyer: normalizedBuyer, email, phone });
         res.status(201).json({ client });
-    } catch (_error) {
+    } catch (error) {
+        if (isBuyerIndexConflict(error)) {
+            res.status(409).json({ message: "Ese Buyer Id ya pertenece a otro cliente." });
+            return;
+        }
         res.status(400).json({ message: "Error al crear cliente" });
     }
 };
@@ -83,14 +116,23 @@ export const updateClient = async (req: Request, res: Response): Promise<void> =
     try {
         const { fullname, buyer, email, phone } = req.body as {
             fullname?: string;
-            buyer?: string;
+            buyer?: string | null;
             email?: string;
             phone?: string;
         };
 
         const updateData: Record<string, unknown> = {};
         if (fullname !== undefined) updateData.fullname = fullname;
-        if (buyer !== undefined) updateData.buyer = buyer;
+        // `null` or "" removes the buyer id
+        if (buyer !== undefined) {
+            const normalizedBuyer = normalizeBuyer(buyer);
+            const conflict = await findBuyerConflict(normalizedBuyer, req.params.id as string);
+            if (conflict) {
+                res.status(409).json({ message: conflict });
+                return;
+            }
+            updateData.buyer = normalizedBuyer;
+        }
         if (email !== undefined) updateData.email = email;
         if (phone !== undefined) updateData.phone = phone;
 
@@ -105,7 +147,11 @@ export const updateClient = async (req: Request, res: Response): Promise<void> =
         }
 
         res.status(200).json({ client });
-    } catch (_error) {
+    } catch (error) {
+        if (isBuyerIndexConflict(error)) {
+            res.status(409).json({ message: "Ese Buyer Id ya pertenece a otro cliente." });
+            return;
+        }
         res.status(400).json({ message: "Error al actualizar cliente" });
     }
 };

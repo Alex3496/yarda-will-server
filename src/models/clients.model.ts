@@ -1,9 +1,19 @@
 import { Document, Model, Schema, model } from "mongoose";
 
+/**
+ * Normalizes a buyer id: trims it, stores it in uppercase and turns empty values into null,
+ * so "abc123", " ABC123 " and "ABC123" are the same id and every "no buyer" is stored the same way.
+ */
+export const normalizeBuyer = (value: unknown): string | null => {
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    return trimmed ? trimmed.toUpperCase() : null;
+};
+
 export interface IClient extends Document {
     key: string;
     fullname: string;
-    buyer?: string;
+    buyer?: string | null;
     email?: string;
     phone?: string;
     createdAt: Date;
@@ -24,12 +34,12 @@ const clientSchema = new Schema<IClient>(
             maxlength: 120,
             uppercase: true,
         },
-        // is like an external id
+        // External id. Optional, but unique among clients that have one (see index below).
         buyer: {
             type: String,
-            trim: true,
             maxlength: 120,
-            unique: true,
+            default: null,
+            set: normalizeBuyer,
         },
         email: {
             type: String,
@@ -46,6 +56,14 @@ const clientSchema = new Schema<IClient>(
     {
         timestamps: true,
     },
+);
+
+// Unique only when a buyer id is present: null is not a string, so any number of
+// clients can have no buyer id. Replaces the old plain unique index "buyer_1",
+// which the migrateClientBuyer seeder drops.
+clientSchema.index(
+    { buyer: 1 },
+    { unique: true, partialFilterExpression: { buyer: { $type: "string" } }, name: "unique_buyer_when_present" },
 );
 
 clientSchema.pre("save", async function () {
